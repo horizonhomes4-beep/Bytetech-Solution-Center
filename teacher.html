@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>Teacher Dashboard</title>
+
+<link rel="preconnect"
+href="https://fonts.googleapis.com">
+
+<link rel="preconnect"
+href="https://fonts.gstatic.com"
+crossorigin>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+rel="stylesheet">
+
+<link rel="stylesheet"
+href="style2.css">
+
+<script type="module"
+src="firebase.js"></script>
+
+<script type="module"
+src="teacher.js"></script>
+
+</head>
+
+<body>
+
+<div class="page">
+
+<header class="topbar">
+
+<div class="logo">
+
+<div class="logo-icon">
+
+👨‍🏫
+
+</div>
+
+<div>
+
+<h1 id="teacherName">
+
+Teacher Dashboard
+
+</h1>
+
+<p>
+
+Lesson Payment System
+
+</p>
+
+</div>
+
+</div>
+
+</header>
+
+<section class="summary-grid">
+
+<div class="summary-card">
+
+<h3>
+
+Expected Amount
+
+</h3>
+
+<h1 id="expectedAmount">
+
+₦0
+
+</h1>
+
+<p>
+
+One-third of student payments
+
+</p>
+
+</div>
+
+<div class="summary-card">
+
+<h3>
+
+Payment Received
+
+</h3>
+
+<h1 id="receivedAmount">
+
+₦0
+
+</h1>
+
+<p>
+
+Total amount received
+
+</p>
+
+</div>
+
+<div class="summary-card">
+
+<h3>
+
+Balance
+
+</h3>
+
+<h1 id="balanceAmount">
+
+₦0
+
+</h1>
+
+<p>
+
+Expected minus received
+
+</p>
+
+</div>
+
+</section>
+
+<section class="content-card">
+
+<div class="card-header">
+
+<h2>
+
+Assigned Students
+
+</h2>
+
+</div>
+
+<div class="table-wrapper">
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>
+
+Student
+
+</th>
+
+<th>
+
+Program
+
+</th>
+
+<th>
+
+Start Date
+
+</th>
+
+<th>
+
+Stop Date
+
+</th>
+
+<th>
+
+Amount Paid
+
+</th>
+
+<th>
+
+Teacher Share
+
+</th>
+
+<th>
+
+Receipt
+
+</th>
+
+</tr>
+
+</thead>
+
+<tbody id="studentTable">
+
+<tr>
+
+<td colspan="7"
+class="empty">
+
+No students assigned
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="table-footer" id="studentTableFooter"></div>
+
+</section>
+  <section class="content-card">
+
+    <div class="card-header">
+
+        <h2>
+
+            Payment History
+
+        </h2>
+
+    </div>
+
+    <div class="table-wrapper">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>Date</th>
+
+                    <th>Amount</th>
+
+                    <th>Type</th>
+
+                    <th>Remark</th>
+
+                    <th>Status</th>
+
+                    <th>Action</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody id="paymentTable">
+
+                <tr>
+
+                    <td colspan="6" class="empty">
+
+                        No payment history available
+
+                    </td>
+
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
+
+<!--==============================
+LOADING SCREEN
+===============================-->
+
+<div id="loadingScreen">
+
+    <div class="loader"></div>
+
+    <h3>
+
+        Loading Dashboard...
+
+    </h3>
+
+</div>
+
+<!--==============================
+TOAST
+===============================-->
+
+<div id="toast">
+
+    <span id="toastMessage">
+
+    </span>
+
+</div>
+
+<footer class="footer">
+
+    <p>
+
+        Lesson Payment Management System
+
+    </p>
+
+    <small>
+
+        Teacher Dashboard
+
+    </small>
+
+</footer>
+
+</div>
+
+</body>
+
+</html>
