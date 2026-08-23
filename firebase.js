@@ -22,13 +22,13 @@ import {
 //==================================================
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBZejxfnivyOSpoYazSzROJ9tBHhTE-M3I",
-  authDomain: "chat-cf0b3.firebaseapp.com",
-  databaseURL: "https://chat-cf0b3-default-rtdb.firebaseio.com",
-  projectId: "chat-cf0b3",
-  storageBucket: "chat-cf0b3.appspot.com",
-  messagingSenderId: "440281445260",
-  appId: "1:440281445260:web:06d323761375fff1b19ca9"
+  apiKey: "AIzaSyB78-XIa4cPsOAQMWefhzGYkMGAlwNtJx8",
+  authDomain: "set-3-6e04d.firebaseapp.com",
+  databaseURL: "https://set-3-6e04d-default-rtdb.firebaseio.com",
+  projectId: "set-3-6e04d",
+  storageBucket: "set-3-6e04d.firebasestorage.app",
+  messagingSenderId: "906900598918",
+  appId: "1:906900598918:web:bf83e8df4f13147fe02107"
 };
 
 //==================================================
