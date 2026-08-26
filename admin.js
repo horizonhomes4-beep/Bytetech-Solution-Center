@@ -29,8 +29,8 @@ const paymentTable = document.getElementById("paymentTable");
 const teacherCount = document.getElementById("teacherCount");
 const studentCount = document.getElementById("studentCount");
 
-// All commission totals below are one-third of the underlying real
-// (full) fee figures — never stored pre-divided, always computed here.
+// All teacher commission totals are exactly 33% of the
+// underlying real/full student fee figures.
 const commissionExpectedFull = document.getElementById("commissionExpectedFull");
 const commissionEarnedTotal = document.getElementById("commissionEarnedTotal");
 const commissionUnearnedTotal = document.getElementById("commissionUnearnedTotal");
@@ -89,9 +89,33 @@ let editingStudentId = null;
 let deletePath = "";
 let deleteType = ""; // "student" | "teacher"
 
-// Students list pagination (show a handful at a time, toggle for the rest)
+// Students list pagination
 let studentsExpanded = false;
 const STUDENT_PAGE_SIZE = 3;
+
+//==================================================
+// TEACHER COMMISSION RATE
+//==================================================
+//
+// Teacher receives exactly 33% of the student's full fee.
+//
+// Example:
+// Full fee = ₦120,000
+// Teacher commission = ₦120,000 × 0.33 = ₦39,600
+//
+// IMPORTANT:
+// Student expectedPayment and amountPaid remain stored in Firebase
+// as the REAL/FULL amounts entered by the admin.
+// The 33% commission is calculated only when displaying/calculating
+// teacher earnings.
+//
+//==================================================
+
+const TEACHER_COMMISSION_RATE = 0.33;
+
+function toCommission(value) {
+    return Number(value || 0) * TEACHER_COMMISSION_RATE;
+}
 
 //==================================================
 // TOAST
@@ -100,8 +124,12 @@ const STUDENT_PAGE_SIZE = 3;
 function toast(message) {
     const box = document.getElementById("toast");
     const text = document.getElementById("toastMessage");
+
+    if (!box || !text) return;
+
     text.textContent = message;
     box.classList.add("show");
+
     setTimeout(() => {
         box.classList.remove("show");
     }, 2500);
@@ -117,27 +145,32 @@ function money(amount) {
 
 function balanceBadge(value) {
     const num = Number(value || 0);
-    const cls = num > 0 ? "badge-negative" : num < 0 ? "badge-positive" : "badge-neutral";
+
+    const cls =
+        num > 0
+            ? "badge-negative"
+            : num < 0
+                ? "badge-positive"
+                : "badge-neutral";
+
     return `<span class="balance-badge ${cls}">${money(num)}</span>`;
 }
 
 //==================================================
 // STUDENT PAYMENT HELPERS
-// expectedPayment / amountPaid stored in Firebase are always the REAL,
-// FULL fee figures the admin typed in (e.g. ₦120,000 / ₦80,000) — never
-// pre-divided. Every on-screen figure (table, cards, badges) divides by
-// 3 fresh, right here, so there is exactly one source of truth and no
-// risk of a stale or double-divided number sneaking into the database.
+//==================================================
+//
+// expectedPayment / amountPaid stored in Firebase are always the
+// REAL/FULL fee figures entered by the admin.
+//
+// Teacher commission is exactly 33% and is calculated only when
+// displaying teacher-related earnings.
+//
 //==================================================
 
-const COMMISSION_SHARE = 3;
-
-function toCommission(value) {
-    return Number(value || 0) / COMMISSION_SHARE;
-}
-
 function studentBalance(student) {
-    return Number(student.expectedPayment || 0) - Number(student.amountPaid || 0);
+    return Number(student.expectedPayment || 0) -
+        Number(student.amountPaid || 0);
 }
 
 function isFullyPaid(student) {
@@ -146,40 +179,60 @@ function isFullyPaid(student) {
 
 function paymentStatusBadge(student) {
     const balance = studentBalance(student);
+
     if (balance <= 0) {
         return `<span class="balance-badge badge-positive">Fully Paid</span>`;
     }
-    return `<span class="balance-badge badge-negative">${money(toCommission(balance))} Due</span>`;
+
+    return `
+        <span class="balance-badge badge-negative">
+            ${money(balance)} Due
+        </span>
+    `;
 }
 
 //==================================================
 // STUDENT SUBSCRIPTION TIMER
-// Based on the stop date set for the student's program duration.
-//   expired      → the subscription period is over
-//   ending_soon  → 7 days or fewer remain (includes "ends today")
-//   active       → more than 7 days remain
-//   none         → no stop date was set for this student
+//==================================================
+//
+// expired      → subscription period is over
+// ending_soon  → 7 days or fewer remain
+// active       → more than 7 days remain
+// none         → no stop date was set
+//
 //==================================================
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function studentTimeStatus(student) {
     if (!student.stopDate) {
-        return { category: "none", label: "No End Date", cls: "badge-neutral" };
+        return {
+            category: "none",
+            label: "No End Date",
+            cls: "badge-neutral"
+        };
     }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const stop = new Date(student.stopDate + "T00:00:00");
+
     if (isNaN(stop.getTime())) {
-        return { category: "none", label: "No End Date", cls: "badge-neutral" };
+        return {
+            category: "none",
+            label: "No End Date",
+            cls: "badge-neutral"
+        };
     }
 
-    const diffDays = Math.round((stop.getTime() - today.getTime()) / DAY_MS);
+    const diffDays = Math.round(
+        (stop.getTime() - today.getTime()) / DAY_MS
+    );
 
     if (diffDays < 0) {
         const daysAgo = Math.abs(diffDays);
+
         return {
             category: "expired",
             label: `Finished ${daysAgo}d ago`,
@@ -188,22 +241,38 @@ function studentTimeStatus(student) {
     }
 
     if (diffDays === 0) {
-        return { category: "ending_soon", label: "Ends Today", cls: "badge-warning" };
+        return {
+            category: "ending_soon",
+            label: "Ends Today",
+            cls: "badge-warning"
+        };
     }
 
     if (diffDays <= 7) {
-        return { category: "ending_soon", label: `${diffDays}d left`, cls: "badge-warning" };
+        return {
+            category: "ending_soon",
+            label: `${diffDays}d left`,
+            cls: "badge-warning"
+        };
     }
 
-    return { category: "active", label: `${diffDays}d left`, cls: "badge-positive" };
+    return {
+        category: "active",
+        label: `${diffDays}d left`,
+        cls: "badge-positive"
+    };
 }
 
 function timeStatusBadge(status) {
-    return `<span class="balance-badge ${status.cls}">${status.label}</span>`;
+    return `
+        <span class="balance-badge ${status.cls}">
+            ${status.label}
+        </span>
+    `;
 }
 
 //==================================================
-// ESCAPE HTML (basic safety for injected text)
+// ESCAPE HTML
 //==================================================
 
 function escapeHtml(value) {
@@ -230,20 +299,28 @@ function generateKey() {
 function openTeacherModal(editId = null) {
     editingTeacherId = editId;
 
-    const title = document.querySelector("#teacherModal .modal-header h2");
+    const title = document.querySelector(
+        "#teacherModal .modal-header h2"
+    );
+
     const saveBtn = document.getElementById("saveTeacher");
 
     if (editId) {
         const t = teachers[editId];
+
+        if (!t) return;
+
         document.getElementById("teacherName").value = t.name || "";
         document.getElementById("teacherPhone").value = t.phone || "";
         document.getElementById("teacherAddress").value = t.address || "";
+
         title.textContent = "Edit Teacher";
         saveBtn.textContent = "Update Teacher";
     } else {
         document.getElementById("teacherName").value = "";
         document.getElementById("teacherPhone").value = "";
         document.getElementById("teacherAddress").value = "";
+
         title.textContent = "Add Teacher";
         saveBtn.textContent = "Save Teacher";
     }
@@ -259,43 +336,68 @@ function closeTeacherModal() {
 function openStudentModal(editId = null) {
     editingStudentId = editId;
 
-    const title = document.querySelector("#studentModal .modal-header h2");
+    const title = document.querySelector(
+        "#studentModal .modal-header h2"
+    );
+
     const saveBtn = document.getElementById("saveStudent");
     const programSelect = document.getElementById("studentProgram");
 
     if (editId) {
         const s = students[editId];
+
+        if (!s) return;
+
         document.getElementById("studentName").value = s.name || "";
         document.getElementById("studentEmail").value = s.email || "";
         document.getElementById("studentPhone").value = s.phone || "";
         document.getElementById("studentGender").value = s.gender || "";
         document.getElementById("studentDob").value = s.dob || "";
         document.getElementById("studentAddress").value = s.address || "";
-        document.getElementById("guardianName").value = s.guardianName || "";
-        document.getElementById("guardianPhone").value = s.guardianPhone || "";
+        document.getElementById("guardianName").value =
+            s.guardianName || "";
+        document.getElementById("guardianPhone").value =
+            s.guardianPhone || "";
+
         programSelect.value = s.program || "";
-        document.getElementById("startDate").value = s.startDate || "";
-        document.getElementById("stopDate").value = s.stopDate || "";
-        document.getElementById("expectedPayment").value = s.expectedPayment || "";
-        document.getElementById("amountPaid").value = s.amountPaid || "";
+
+        document.getElementById("startDate").value =
+            s.startDate || "";
+
+        document.getElementById("stopDate").value =
+            s.stopDate || "";
+
+        document.getElementById("expectedPayment").value =
+            s.expectedPayment || "";
+
+        document.getElementById("amountPaid").value =
+            s.amountPaid || "";
+
         teacherSelect.value = s.teacherId || "";
+
         title.textContent = "Edit Student";
         saveBtn.textContent = "Update Student";
     } else {
         document.getElementById("studentName").value = "";
         document.getElementById("studentEmail").value = "";
         document.getElementById("studentPhone").value = "";
+
         document.getElementById("studentGender").selectedIndex = 0;
+
         document.getElementById("studentDob").value = "";
         document.getElementById("studentAddress").value = "";
         document.getElementById("guardianName").value = "";
         document.getElementById("guardianPhone").value = "";
+
         programSelect.selectedIndex = 0;
+
         document.getElementById("startDate").value = "";
         document.getElementById("stopDate").value = "";
         document.getElementById("expectedPayment").value = "";
         document.getElementById("amountPaid").value = "";
+
         teacherSelect.selectedIndex = 0;
+
         title.textContent = "Add Student";
         saveBtn.textContent = "Save Student";
     }
@@ -312,29 +414,40 @@ function closeStudentModal() {
 // STUDENT PROFILE VIEW MODAL
 //==================================================
 
-const studentProfileModal = document.getElementById("studentProfileModal");
+const studentProfileModal =
+    document.getElementById("studentProfileModal");
+
 let viewingStudentId = null;
 
 function profileItem(label, value, fullWidth) {
-    const safeValue = value && String(value).trim() !== "" ? escapeHtml(value) : "—";
+    const safeValue =
+        value && String(value).trim() !== ""
+            ? escapeHtml(value)
+            : "—";
+
     return `
 <div class="profile-item${fullWidth ? " full-width" : ""}">
-<span class="profile-label">${label}</span>
-<span class="profile-value">${safeValue}</span>
+    <span class="profile-label">${label}</span>
+    <span class="profile-value">${safeValue}</span>
 </div>`;
 }
 
 function openStudentProfile(id) {
     const student = students[id];
+
     if (!student) return;
 
     viewingStudentId = id;
 
-    const teacherName = teachers[student.teacherId]?.name || "Unassigned";
+    const teacherName =
+        teachers[student.teacherId]?.name || "Unassigned";
+
     const time = studentTimeStatus(student);
+
     const grid = document.getElementById("studentProfileGrid");
 
-    document.getElementById("studentProfileTitle").textContent = student.name + " — Profile";
+    document.getElementById("studentProfileTitle").textContent =
+        student.name + " — Profile";
 
     grid.innerHTML =
         profileItem("Email", student.email) +
@@ -349,9 +462,20 @@ function openStudentProfile(id) {
         profileItem("Start Date", student.startDate) +
         profileItem("Stop Date", student.stopDate) +
         profileItem("Subscription Status", time.label) +
-        profileItem("Expected Payment (⅓)", money(toCommission(student.expectedPayment))) +
-        profileItem("Amount Paid (⅓)", money(toCommission(student.amountPaid))) +
-        profileItem("Payment Status", isFullyPaid(student) ? "Fully Paid" : "Balance Due");
+        profileItem(
+            "Expected Payment (33%)",
+            money(toCommission(student.expectedPayment))
+        ) +
+        profileItem(
+            "Amount Paid (33%)",
+            money(toCommission(student.amountPaid))
+        ) +
+        profileItem(
+            "Payment Status",
+            isFullyPaid(student)
+                ? "Fully Paid"
+                : "Balance Due"
+        );
 
     studentProfileModal.classList.add("active");
 }
@@ -368,8 +492,11 @@ document.getElementById("closeStudentProfileBtn").onclick = () => {
 
 document.getElementById("editFromProfile").onclick = () => {
     if (!viewingStudentId) return;
+
     studentProfileModal.classList.remove("active");
+
     openStudentModal(viewingStudentId);
+
     viewingStudentId = null;
 };
 
@@ -377,8 +504,12 @@ document.getElementById("editFromProfile").onclick = () => {
 // BUTTON WIRING - OPEN
 //==================================================
 
-document.getElementById("addTeacherBtn").onclick = () => openTeacherModal();
-document.getElementById("addStudentBtn").onclick = () => openStudentModal();
+document.getElementById("addTeacherBtn").onclick = () =>
+    openTeacherModal();
+
+document.getElementById("addStudentBtn").onclick = () =>
+    openStudentModal();
+
 document.getElementById("paymentBtn").onclick = () => {
     paymentModal.classList.add("active");
 };
@@ -387,15 +518,22 @@ document.getElementById("paymentBtn").onclick = () => {
 // BUTTON WIRING - CANCEL / CLOSE
 //==================================================
 
-document.getElementById("cancelTeacher").onclick = closeTeacherModal;
-document.getElementById("closeTeacherModal").onclick = closeTeacherModal;
+document.getElementById("cancelTeacher").onclick =
+    closeTeacherModal;
 
-document.getElementById("cancelStudent").onclick = closeStudentModal;
-document.getElementById("closeStudentModal").onclick = closeStudentModal;
+document.getElementById("closeTeacherModal").onclick =
+    closeTeacherModal;
+
+document.getElementById("cancelStudent").onclick =
+    closeStudentModal;
+
+document.getElementById("closeStudentModal").onclick =
+    closeStudentModal;
 
 document.getElementById("cancelPayment").onclick = () => {
     paymentModal.classList.remove("active");
 };
+
 document.getElementById("closePaymentModal").onclick = () => {
     paymentModal.classList.remove("active");
 };
@@ -404,27 +542,37 @@ document.getElementById("closeDashboardModal").onclick = () => {
     dashboardModal.classList.remove("active");
 };
 
-document.getElementById("closeTeacherViewModal").onclick = closeTeacherViewModal;
+document.getElementById("closeTeacherViewModal").onclick =
+    closeTeacherViewModal;
 
 function closeTeacherViewModal() {
     teacherViewModal.classList.remove("active");
-    document.getElementById("teacherViewFrame").src = "about:blank";
+
+    document.getElementById("teacherViewFrame").src =
+        "about:blank";
 }
 
 //==================================================
 // REFRESH BUTTON
-// (Data is already live via onValue, this just gives
-// the user visible confirmation + resets filters)
 //==================================================
 
 document.getElementById("refreshBtn").onclick = () => {
     teacherSearch.value = "";
     studentSearch.value = "";
-    if (studentFilter) studentFilter.value = "all";
-    if (studentTeacherFilter) studentTeacherFilter.value = "all";
+
+    if (studentFilter) {
+        studentFilter.value = "all";
+    }
+
+    if (studentTeacherFilter) {
+        studentTeacherFilter.value = "all";
+    }
+
     studentsExpanded = false;
+
     renderTeachers();
     renderStudents();
+
     toast("Dashboard refreshed");
 };
 
@@ -433,9 +581,14 @@ document.getElementById("refreshBtn").onclick = () => {
 //==================================================
 
 document.getElementById("saveTeacher").onclick = () => {
-    const name = document.getElementById("teacherName").value.trim();
-    const phone = document.getElementById("teacherPhone").value.trim();
-    const address = document.getElementById("teacherAddress").value.trim();
+    const name =
+        document.getElementById("teacherName").value.trim();
+
+    const phone =
+        document.getElementById("teacherPhone").value.trim();
+
+    const address =
+        document.getElementById("teacherAddress").value.trim();
 
     if (name === "") {
         toast("Enter teacher name");
@@ -443,23 +596,42 @@ document.getElementById("saveTeacher").onclick = () => {
     }
 
     if (editingTeacherId) {
-        update(ref(db, "lessonPayment/teachers/" + editingTeacherId), {
-            name,
-            phone,
-            address
-        });
+        update(
+            ref(
+                db,
+                "lessonPayment/teachers/" +
+                editingTeacherId
+            ),
+            {
+                name,
+                phone,
+                address
+            }
+        );
+
         toast("Teacher updated successfully");
     } else {
-        const teacherId = push(teachersRef).key;
-        const dashboardKey = generateKey();
+        const teacherId =
+            push(teachersRef).key;
 
-        set(ref(db, "lessonPayment/teachers/" + teacherId), {
-            name,
-            phone,
-            address,
-            dashboardKey,
-            createdAt: Date.now()
-        });
+        const dashboardKey =
+            generateKey();
+
+        set(
+            ref(
+                db,
+                "lessonPayment/teachers/" +
+                teacherId
+            ),
+            {
+                name,
+                phone,
+                address,
+                dashboardKey,
+                createdAt: Date.now()
+            }
+        );
+
         toast("Teacher added successfully");
     }
 
@@ -470,8 +642,11 @@ document.getElementById("saveTeacher").onclick = () => {
 // TEACHER SELECT ELEMENTS
 //==================================================
 
-const teacherSelect = document.getElementById("teacherSelect");
-const paymentTeacher = document.getElementById("paymentTeacher");
+const teacherSelect =
+    document.getElementById("teacherSelect");
+
+const paymentTeacher =
+    document.getElementById("paymentTeacher");
 
 //==================================================
 // LOAD TEACHERS
@@ -479,6 +654,7 @@ const paymentTeacher = document.getElementById("paymentTeacher");
 
 onValue(teachersRef, (snapshot) => {
     teachers = snapshot.val() || {};
+
     populateTeacherDropdowns();
     renderTeachers();
     renderStudents();
@@ -487,45 +663,70 @@ onValue(teachersRef, (snapshot) => {
 });
 
 function populateTeacherDropdowns() {
-    const currentTeacherSelectValue = teacherSelect.value;
-    const currentPaymentTeacherValue = paymentTeacher.value;
-    const currentStudentTeacherFilterValue = studentTeacherFilter ? studentTeacherFilter.value : "all";
+    const currentTeacherSelectValue =
+        teacherSelect.value;
 
-    teacherSelect.innerHTML = '<option value="">Select Teacher</option>';
-    paymentTeacher.innerHTML = '<option value="">Select Teacher</option>';
+    const currentPaymentTeacherValue =
+        paymentTeacher.value;
+
+    const currentStudentTeacherFilterValue =
+        studentTeacherFilter
+            ? studentTeacherFilter.value
+            : "all";
+
+    teacherSelect.innerHTML =
+        '<option value="">Select Teacher</option>';
+
+    paymentTeacher.innerHTML =
+        '<option value="">Select Teacher</option>';
+
     if (studentTeacherFilter) {
-        studentTeacherFilter.innerHTML = '<option value="all">All Teachers</option>';
+        studentTeacherFilter.innerHTML =
+            '<option value="all">All Teachers</option>';
     }
 
     Object.keys(teachers).forEach((id) => {
         const teacher = teachers[id];
 
-        const option1 = document.createElement("option");
+        const option1 =
+            document.createElement("option");
+
         option1.value = id;
         option1.textContent = teacher.name;
+
         teacherSelect.appendChild(option1);
 
-        const option2 = option1.cloneNode(true);
+        const option2 =
+            option1.cloneNode(true);
+
         paymentTeacher.appendChild(option2);
 
         if (studentTeacherFilter) {
-            const option3 = option1.cloneNode(true);
+            const option3 =
+                option1.cloneNode(true);
+
             studentTeacherFilter.appendChild(option3);
         }
     });
 
-    teacherSelect.value = currentTeacherSelectValue;
-    paymentTeacher.value = currentPaymentTeacherValue;
+    teacherSelect.value =
+        currentTeacherSelectValue;
+
+    paymentTeacher.value =
+        currentPaymentTeacherValue;
+
     if (studentTeacherFilter) {
-        studentTeacherFilter.value = currentStudentTeacherFilterValue;
+        studentTeacherFilter.value =
+            currentStudentTeacherFilterValue;
     }
 }
 
 //==================================================
-// PROGRAM OPTIONS (expandable list, stored in Firebase)
+// PROGRAM OPTIONS
 //==================================================
 
-const studentProgramSelect = document.getElementById("studentProgram");
+const studentProgramSelect =
+    document.getElementById("studentProgram");
 
 onValue(programsRef, (snapshot) => {
     customPrograms = snapshot.val() || {};
@@ -533,61 +734,116 @@ onValue(programsRef, (snapshot) => {
 });
 
 function allProgramNames() {
-    const extras = Object.values(customPrograms).filter((p) => !DEFAULT_PROGRAMS.includes(p));
-    return [...DEFAULT_PROGRAMS, ...extras];
+    const extras =
+        Object.values(customPrograms)
+            .filter(
+                (p) => !DEFAULT_PROGRAMS.includes(p)
+            );
+
+    return [
+        ...DEFAULT_PROGRAMS,
+        ...extras
+    ];
 }
 
 function populateProgramOptions(selectValue) {
     if (!studentProgramSelect) return;
 
-    const keep = selectValue !== undefined ? selectValue : studentProgramSelect.value;
+    const keep =
+        selectValue !== undefined
+            ? selectValue
+            : studentProgramSelect.value;
 
-    studentProgramSelect.innerHTML = '<option value="">Select Program</option>';
+    studentProgramSelect.innerHTML =
+        '<option value="">Select Program</option>';
 
     allProgramNames().forEach((name) => {
-        const option = document.createElement("option");
+        const option =
+            document.createElement("option");
+
         option.value = name;
         option.textContent = name;
+
         studentProgramSelect.appendChild(option);
     });
 
-    const addOption = document.createElement("option");
-    addOption.value = ADD_PROGRAM_VALUE;
-    addOption.textContent = "+ Add New Program...";
+    const addOption =
+        document.createElement("option");
+
+    addOption.value =
+        ADD_PROGRAM_VALUE;
+
+    addOption.textContent =
+        "+ Add New Program...";
+
     studentProgramSelect.appendChild(addOption);
 
     studentProgramSelect.value = keep;
 }
 
 if (studentProgramSelect) {
-    studentProgramSelect.addEventListener("change", () => {
-        if (studentProgramSelect.value !== ADD_PROGRAM_VALUE) return;
+    studentProgramSelect.addEventListener(
+        "change",
+        () => {
+            if (
+                studentProgramSelect.value !==
+                ADD_PROGRAM_VALUE
+            ) {
+                return;
+            }
 
-        const entered = (prompt("Enter the new program/course name:") || "").trim();
+            const entered =
+                (
+                    prompt(
+                        "Enter the new program/course name:"
+                    ) || ""
+                ).trim();
 
-        if (entered === "") {
-            populateProgramOptions("");
-            return;
+            if (entered === "") {
+                populateProgramOptions("");
+                return;
+            }
+
+            const exists =
+                allProgramNames().some(
+                    (p) =>
+                        p.toLowerCase() ===
+                        entered.toLowerCase()
+                );
+
+            if (!exists) {
+                const newId =
+                    push(programsRef).key;
+
+                set(
+                    ref(
+                        db,
+                        "lessonPayment/programs/" +
+                        newId
+                    ),
+                    entered
+                );
+            }
+
+            setTimeout(() => {
+                populateProgramOptions(entered);
+            }, 250);
         }
-
-        if (!allProgramNames().some((p) => p.toLowerCase() === entered.toLowerCase())) {
-            const newId = push(programsRef).key;
-            set(ref(db, "lessonPayment/programs/" + newId), entered);
-        }
-
-        // onValue above will refresh the option list; keep the new value selected.
-        setTimeout(() => populateProgramOptions(entered), 250);
-    });
+    );
 }
 
 //==================================================
-// RENDER TEACHERS (with search filter)
+// RENDER TEACHERS
 //==================================================
 
 function renderTeachers() {
-    const filter = (teacherSearch.value || "").trim().toLowerCase();
+    const filter =
+        (teacherSearch.value || "")
+            .trim()
+            .toLowerCase();
 
     teacherTable.innerHTML = "";
+
     let count = 0;
     let visibleCount = 0;
 
@@ -596,7 +852,12 @@ function renderTeachers() {
 
         const teacher = teachers[id];
 
-        if (filter && !teacher.name.toLowerCase().includes(filter)) {
+        if (
+            filter &&
+            !teacher.name
+                .toLowerCase()
+                .includes(filter)
+        ) {
             return;
         }
 
@@ -605,19 +866,39 @@ function renderTeachers() {
         let studentCountForTeacher = 0;
         let expected = 0;
 
-        // Expected earnings include every student ever assigned to this
-        // teacher (even ones later removed) so deleting a student never
-        // erases financial history already counted toward the teacher.
-        Object.keys(students).forEach((studentId) => {
-            const student = students[studentId];
-            if (student.teacherId !== id) return;
+        // Teacher earnings are exactly 33% of every student's
+        // amount paid.
+        //
+        // Deleted students remain part of the financial history,
+        // so deleting a student does not erase earnings already
+        // counted toward the teacher.
 
-            expected += Number(student.amountPaid || 0) / 3;
-            if (!student.isDeleted) studentCountForTeacher++;
-        });
+        Object.keys(students).forEach(
+            (studentId) => {
+                const student =
+                    students[studentId];
 
-        const received = acknowledgedReceivedForTeacher(id);
-        const balance = expected - received;
+                if (
+                    student.teacherId !== id
+                ) {
+                    return;
+                }
+
+                expected += toCommission(
+                    student.amountPaid
+                );
+
+                if (!student.isDeleted) {
+                    studentCountForTeacher++;
+                }
+            }
+        );
+
+        const received =
+            acknowledgedReceivedForTeacher(id);
+
+        const balance =
+            expected - received;
 
         teacherTable.innerHTML += `
 <tr>
@@ -628,21 +909,49 @@ function renderTeachers() {
 <td>${money(received)}</td>
 <td>${balanceBadge(balance)}</td>
 <td class="dashboard-actions">
-<button class="outline-btn view-dashboard" data-id="${id}">View</button>
-<button class="outline-btn copy-link" data-id="${id}">Copy Link</button>
+<button
+    class="outline-btn view-dashboard"
+    data-id="${id}">
+    View
+</button>
+
+<button
+    class="outline-btn copy-link"
+    data-id="${id}">
+    Copy Link
+</button>
 </td>
 <td>
-<button class="primary-btn editTeacher" data-id="${id}">Edit</button>
-<button class="danger-btn deleteTeacher" data-id="${id}">Delete</button>
+<button
+    class="primary-btn editTeacher"
+    data-id="${id}">
+    Edit
+</button>
+
+<button
+    class="danger-btn deleteTeacher"
+    data-id="${id}">
+    Delete
+</button>
 </td>
 </tr>
 `;
     });
 
     if (count === 0) {
-        teacherTable.innerHTML = `<tr><td colspan="8" class="empty">No teachers found</td></tr>`;
+        teacherTable.innerHTML =
+            `<tr>
+                <td colspan="8" class="empty">
+                    No teachers found
+                </td>
+            </tr>`;
     } else if (visibleCount === 0) {
-        teacherTable.innerHTML = `<tr><td colspan="8" class="empty">No teachers match your search</td></tr>`;
+        teacherTable.innerHTML =
+            `<tr>
+                <td colspan="8" class="empty">
+                    No teachers match your search
+                </td>
+            </tr>`;
     }
 
     teacherCount.textContent = count;
@@ -653,131 +962,288 @@ function renderTeachers() {
 }
 
 //==================================================
-// COPY DASHBOARD LINK (via modal)
+// VIEW TEACHER DASHBOARD
 //==================================================
 
 function attachViewDashboardEvents() {
-    document.querySelectorAll(".view-dashboard").forEach((button) => {
-        button.onclick = () => {
-            const teacher = teachers[button.dataset.id];
-            if (!teacher) return;
+    document
+        .querySelectorAll(".view-dashboard")
+        .forEach((button) => {
+            button.onclick = () => {
+                const teacher =
+                    teachers[button.dataset.id];
 
-            const currentPath = window.location.pathname;
-            const folderPath = currentPath.substring(0, currentPath.lastIndexOf("/") + 1);
+                if (!teacher) return;
 
-            const url =
-                window.location.origin +
-                folderPath +
-                "teacher.html" +
-                "?id=" +
-                teacher.dashboardKey;
+                const currentPath =
+                    window.location.pathname;
 
-            document.getElementById("teacherViewTitle").textContent = teacher.name + " — Dashboard";
-            document.getElementById("openTeacherViewTab").href = url;
-            document.getElementById("teacherViewFrame").src = url;
+                const folderPath =
+                    currentPath.substring(
+                        0,
+                        currentPath.lastIndexOf("/") + 1
+                    );
 
-            teacherViewModal.classList.add("active");
-        };
-    });
+                const url =
+                    window.location.origin +
+                    folderPath +
+                    "teacher.html" +
+                    "?id=" +
+                    teacher.dashboardKey;
+
+                document.getElementById(
+                    "teacherViewTitle"
+                ).textContent =
+                    teacher.name +
+                    " — Dashboard";
+
+                document.getElementById(
+                    "openTeacherViewTab"
+                ).href = url;
+
+                document.getElementById(
+                    "teacherViewFrame"
+                ).src = url;
+
+                teacherViewModal.classList.add(
+                    "active"
+                );
+            };
+        });
 }
+
+//==================================================
+// COPY DASHBOARD LINK
+//==================================================
 
 function attachCopyEvents() {
-    document.querySelectorAll(".copy-link").forEach((button) => {
-        button.onclick = () => {
-            const teacher = teachers[button.dataset.id];
-            if (!teacher) return;
+    document
+        .querySelectorAll(".copy-link")
+        .forEach((button) => {
+            button.onclick = () => {
+                const teacher =
+                    teachers[button.dataset.id];
 
-            const currentPath = window.location.pathname;
-            const folderPath = currentPath.substring(0, currentPath.lastIndexOf("/") + 1);
+                if (!teacher) return;
 
-            const url =
-                window.location.origin +
-                folderPath +
-                "teacher.html" +
-                "?id=" +
-                teacher.dashboardKey;
+                const currentPath =
+                    window.location.pathname;
 
-            const linkInput = document.getElementById("dashboardLink");
-            linkInput.value = url;
+                const folderPath =
+                    currentPath.substring(
+                        0,
+                        currentPath.lastIndexOf("/") + 1
+                    );
 
-            dashboardModal.classList.add("active");
-        };
-    });
+                const url =
+                    window.location.origin +
+                    folderPath +
+                    "teacher.html" +
+                    "?id=" +
+                    teacher.dashboardKey;
+
+                const linkInput =
+                    document.getElementById(
+                        "dashboardLink"
+                    );
+
+                linkInput.value = url;
+
+                dashboardModal.classList.add(
+                    "active"
+                );
+            };
+        });
 }
 
-document.getElementById("copyDashboardLink").onclick = () => {
-    const linkInput = document.getElementById("dashboardLink");
+document.getElementById(
+    "copyDashboardLink"
+).onclick = () => {
+    const linkInput =
+        document.getElementById(
+            "dashboardLink"
+        );
+
     linkInput.select();
-    navigator.clipboard.writeText(linkInput.value);
+
+    navigator.clipboard.writeText(
+        linkInput.value
+    );
+
     toast("Dashboard link copied");
 };
 
 //==================================================
-// TEACHER ROW EVENTS (edit / delete)
+// TEACHER ROW EVENTS
 //==================================================
 
 function attachTeacherRowEvents() {
-    document.querySelectorAll(".editTeacher").forEach((button) => {
-        button.onclick = () => {
-            openTeacherModal(button.dataset.id);
-        };
-    });
+    document
+        .querySelectorAll(".editTeacher")
+        .forEach((button) => {
+            button.onclick = () => {
+                openTeacherModal(
+                    button.dataset.id
+                );
+            };
+        });
 
-    document.querySelectorAll(".deleteTeacher").forEach((button) => {
-        button.onclick = () => {
-            deletePath = "lessonPayment/teachers/" + button.dataset.id;
-            deleteType = "teacher";
-            document.getElementById("deleteModalText").textContent =
-                "Are you sure you want to delete this teacher record?";
-            deleteModal.classList.add("active");
-        };
-    });
+    document
+        .querySelectorAll(".deleteTeacher")
+        .forEach((button) => {
+            button.onclick = () => {
+                deletePath =
+                    "lessonPayment/teachers/" +
+                    button.dataset.id;
+
+                deleteType = "teacher";
+
+                document.getElementById(
+                    "deleteModalText"
+                ).textContent =
+                    "Are you sure you want to delete this teacher record?";
+
+                deleteModal.classList.add(
+                    "active"
+                );
+            };
+        });
 }
 
 //==================================================
 // ADD / UPDATE STUDENT
 //==================================================
 
-document.getElementById("saveStudent").onclick = () => {
-    const name = document.getElementById("studentName").value.trim();
-    const email = document.getElementById("studentEmail").value.trim();
-    const phone = document.getElementById("studentPhone").value.trim();
-    const gender = document.getElementById("studentGender").value;
-    const dob = document.getElementById("studentDob").value;
-    const address = document.getElementById("studentAddress").value.trim();
-    const guardianName = document.getElementById("guardianName").value.trim();
-    const guardianPhone = document.getElementById("guardianPhone").value.trim();
-    const program = document.getElementById("studentProgram").value;
-    const startDate = document.getElementById("startDate").value;
-    const stopDate = document.getElementById("stopDate").value;
-    const expectedPayment = Number(document.getElementById("expectedPayment").value);
-    const amountPaidRaw = document.getElementById("amountPaid").value;
-    const amountPaid = amountPaidRaw === "" ? 0 : Number(amountPaidRaw);
-    const teacherId = teacherSelect.value;
+document.getElementById(
+    "saveStudent"
+).onclick = () => {
+    const name =
+        document.getElementById(
+            "studentName"
+        ).value.trim();
 
-    if (name === "" || program === "" || teacherId === "") {
-        toast("Complete all required fields");
+    const email =
+        document.getElementById(
+            "studentEmail"
+        ).value.trim();
+
+    const phone =
+        document.getElementById(
+            "studentPhone"
+        ).value.trim();
+
+    const gender =
+        document.getElementById(
+            "studentGender"
+        ).value;
+
+    const dob =
+        document.getElementById(
+            "studentDob"
+        ).value;
+
+    const address =
+        document.getElementById(
+            "studentAddress"
+        ).value.trim();
+
+    const guardianName =
+        document.getElementById(
+            "guardianName"
+        ).value.trim();
+
+    const guardianPhone =
+        document.getElementById(
+            "guardianPhone"
+        ).value.trim();
+
+    const program =
+        document.getElementById(
+            "studentProgram"
+        ).value;
+
+    const startDate =
+        document.getElementById(
+            "startDate"
+        ).value;
+
+    const stopDate =
+        document.getElementById(
+            "stopDate"
+        ).value;
+
+    // These remain FULL student fee figures in Firebase.
+    const expectedPayment =
+        Number(
+            document.getElementById(
+                "expectedPayment"
+            ).value
+        );
+
+    const amountPaidRaw =
+        document.getElementById(
+            "amountPaid"
+        ).value;
+
+    const amountPaid =
+        amountPaidRaw === ""
+            ? 0
+            : Number(amountPaidRaw);
+
+    const teacherId =
+        teacherSelect.value;
+
+    if (
+        name === "" ||
+        program === "" ||
+        teacherId === ""
+    ) {
+        toast(
+            "Complete all required fields"
+        );
+
         return;
     }
 
-    if (!expectedPayment || expectedPayment <= 0) {
-        toast("Enter the expected payment (total fee)");
+    if (
+        !expectedPayment ||
+        expectedPayment <= 0
+    ) {
+        toast(
+            "Enter the expected payment (total fee)"
+        );
+
         return;
     }
 
     if (amountPaid < 0) {
-        toast("Amount paid cannot be negative");
+        toast(
+            "Amount paid cannot be negative"
+        );
+
         return;
     }
 
-    if (startDate && stopDate && stopDate < startDate) {
-        toast("Stop date cannot be before start date");
+    if (
+        startDate &&
+        stopDate &&
+        stopDate < startDate
+    ) {
+        toast(
+            "Stop date cannot be before start date"
+        );
+
         return;
     }
 
-    // Simple sanity check — only validate format if an email was actually entered.
-    if (email !== "" && !/^\S+@\S+\.\S+$/.test(email)) {
-        toast("Enter a valid email address");
+    if (
+        email !== "" &&
+        !/^\S+@\S+\.\S+$/.test(email)
+    ) {
+        toast(
+            "Enter a valid email address"
+        );
+
         return;
     }
 
@@ -799,16 +1265,38 @@ document.getElementById("saveStudent").onclick = () => {
     };
 
     if (editingStudentId) {
-        update(ref(db, "lessonPayment/students/" + editingStudentId), studentData);
-        toast("Student updated successfully");
+        update(
+            ref(
+                db,
+                "lessonPayment/students/" +
+                editingStudentId
+            ),
+            studentData
+        );
+
+        toast(
+            "Student updated successfully"
+        );
     } else {
-        const studentId = push(studentsRef).key;
-        set(ref(db, "lessonPayment/students/" + studentId), {
-            ...studentData,
-            isDeleted: false,
-            createdAt: Date.now()
-        });
-        toast("Student added successfully");
+        const studentId =
+            push(studentsRef).key;
+
+        set(
+            ref(
+                db,
+                "lessonPayment/students/" +
+                studentId
+            ),
+            {
+                ...studentData,
+                isDeleted: false,
+                createdAt: Date.now()
+            }
+        );
+
+        toast(
+            "Student added successfully"
+        );
     }
 
     closeStudentModal();
@@ -820,210 +1308,522 @@ document.getElementById("saveStudent").onclick = () => {
 
 onValue(studentsRef, (snapshot) => {
     students = snapshot.val() || {};
+
     renderTeachers();
     renderStudents();
     calculateTotals();
 });
 
 //==================================================
-// RENDER STUDENTS (search filter + pagination)
+// RENDER STUDENTS
 //==================================================
 
 function renderStudents() {
-    const filter = (studentSearch.value || "").trim().toLowerCase();
-    const category = studentFilter ? studentFilter.value : "all";
-    const teacherFilterId = studentTeacherFilter ? studentTeacherFilter.value : "all";
+    const filter =
+        (studentSearch.value || "")
+            .trim()
+            .toLowerCase();
 
-    // Only active (non-deleted) students appear in the list, but deleted
-    // students are NOT removed from the `students` object itself, so their
-    // amounts still count toward teacher totals elsewhere.
-    const activeIds = Object.keys(students).filter((id) => !students[id].isDeleted);
+    const category =
+        studentFilter
+            ? studentFilter.value
+            : "all";
 
-    const searchedIds = activeIds.filter((id) => {
-        if (!filter) return true;
-        return (students[id].name || "").toLowerCase().includes(filter);
-    });
+    const teacherFilterId =
+        studentTeacherFilter
+            ? studentTeacherFilter.value
+            : "all";
 
-    const teacherFilteredIds = searchedIds.filter((id) => {
-        if (teacherFilterId === "all") return true;
-        return students[id].teacherId === teacherFilterId;
-    });
+    // Only active students appear in the list.
+    // Deleted students remain in Firebase for financial history.
 
-    const filteredIds = teacherFilteredIds.filter((id) => {
-        if (category === "all") return true;
+    const activeIds =
+        Object.keys(students)
+            .filter(
+                (id) =>
+                    !students[id].isDeleted
+            );
 
-        const student = students[id];
+    const searchedIds =
+        activeIds.filter((id) => {
+            if (!filter) return true;
 
-        if (category === "paid") return isFullyPaid(student);
-        if (category === "balance") return !isFullyPaid(student);
+            return (
+                students[id].name || ""
+            )
+                .toLowerCase()
+                .includes(filter);
+        });
 
-        const time = studentTimeStatus(student);
-        if (category === "expired") return time.category === "expired";
-        if (category === "ending_soon") return time.category === "ending_soon";
-        if (category === "active") return time.category === "active";
-        if (category === "nodate") return time.category === "none";
+    const teacherFilteredIds =
+        searchedIds.filter((id) => {
+            if (
+                teacherFilterId === "all"
+            ) {
+                return true;
+            }
 
-        return true;
-    });
+            return (
+                students[id].teacherId ===
+                teacherFilterId
+            );
+        });
 
-    const visibleIds = studentsExpanded ? filteredIds : filteredIds.slice(0, STUDENT_PAGE_SIZE);
+    const filteredIds =
+        teacherFilteredIds.filter(
+            (id) => {
+                if (category === "all") {
+                    return true;
+                }
+
+                const student =
+                    students[id];
+
+                if (
+                    category === "paid"
+                ) {
+                    return isFullyPaid(
+                        student
+                    );
+                }
+
+                if (
+                    category === "balance"
+                ) {
+                    return !isFullyPaid(
+                        student
+                    );
+                }
+
+                const time =
+                    studentTimeStatus(
+                        student
+                    );
+
+                if (
+                    category === "expired"
+                ) {
+                    return (
+                        time.category ===
+                        "expired"
+                    );
+                }
+
+                if (
+                    category ===
+                    "ending_soon"
+                ) {
+                    return (
+                        time.category ===
+                        "ending_soon"
+                    );
+                }
+
+                if (
+                    category === "active"
+                ) {
+                    return (
+                        time.category ===
+                        "active"
+                    );
+                }
+
+                if (
+                    category === "nodate"
+                ) {
+                    return (
+                        time.category ===
+                        "none"
+                    );
+                }
+
+                return true;
+            }
+        );
+
+    const visibleIds =
+        studentsExpanded
+            ? filteredIds
+            : filteredIds.slice(
+                0,
+                STUDENT_PAGE_SIZE
+            );
 
     studentTable.innerHTML = "";
 
-    visibleIds.forEach((studentId) => {
-        const student = students[studentId];
-        const teacherNameForRow = teachers[student.teacherId]?.name || "Unknown";
-        const timeStatus = studentTimeStatus(student);
+    visibleIds.forEach(
+        (studentId) => {
+            const student =
+                students[studentId];
 
-        // Every money figure shown here is one-third of the real, full
-        // amount stored in Firebase — computed fresh on every render.
-        const expectedShare = toCommission(student.expectedPayment);
-        const paidShare = toCommission(student.amountPaid);
+            const teacherNameForRow =
+                teachers[
+                    student.teacherId
+                ]?.name ||
+                "Unknown";
 
-        studentTable.innerHTML += `
+            const timeStatus =
+                studentTimeStatus(
+                    student
+                );
+
+            // Teacher commission is exactly 33%.
+            const expectedShare =
+                toCommission(
+                    student.expectedPayment
+                );
+
+            const paidShare =
+                toCommission(
+                    student.amountPaid
+                );
+
+            studentTable.innerHTML += `
 <tr>
-<td>${escapeHtml(student.name)}</td>
-<td>${escapeHtml(teacherNameForRow)}</td>
-<td><span class="program-tag">${escapeHtml(student.program) || "-"}</span></td>
-<td>${student.startDate || "-"}</td>
-<td>${student.stopDate || "-"}</td>
-<td>${money(expectedShare)}</td>
-<td>${money(paidShare)}</td>
-<td>${paymentStatusBadge(student)}</td>
-<td>${timeStatusBadge(timeStatus)}</td>
-<td><a href="#" class="receipt-link printReceipt" data-id="${studentId}">Print Receipt</a></td>
 <td>
-<button class="outline-btn small-btn viewStudent" data-id="${studentId}">View</button>
-<button class="primary-btn editStudent" data-id="${studentId}">Edit</button>
-<button class="danger-btn deleteStudent" data-id="${studentId}">Delete</button>
+${escapeHtml(student.name)}
+</td>
+
+<td>
+${escapeHtml(teacherNameForRow)}
+</td>
+
+<td>
+<span class="program-tag">
+${escapeHtml(student.program) || "-"}
+</span>
+</td>
+
+<td>
+${student.startDate || "-"}
+</td>
+
+<td>
+${student.stopDate || "-"}
+</td>
+
+<td>
+${money(expectedShare)}
+</td>
+
+<td>
+${money(paidShare)}
+</td>
+
+<td>
+${paymentStatusBadge(student)}
+</td>
+
+<td>
+${timeStatusBadge(timeStatus)}
+</td>
+
+<td>
+<a
+    href="#"
+    class="receipt-link printReceipt"
+    data-id="${studentId}">
+    Print Receipt
+</a>
+</td>
+
+<td>
+<button
+    class="outline-btn small-btn viewStudent"
+    data-id="${studentId}">
+    View
+</button>
+
+<button
+    class="primary-btn editStudent"
+    data-id="${studentId}">
+    Edit
+</button>
+
+<button
+    class="danger-btn deleteStudent"
+    data-id="${studentId}">
+    Delete
+</button>
 </td>
 </tr>
 `;
-    });
+        }
+    );
 
     if (activeIds.length === 0) {
-        studentTable.innerHTML = `<tr><td colspan="11" class="empty">No students available</td></tr>`;
-    } else if (filteredIds.length === 0) {
-        studentTable.innerHTML = `<tr><td colspan="11" class="empty">No students match your search/filter</td></tr>`;
+        studentTable.innerHTML =
+            `<tr>
+                <td
+                    colspan="11"
+                    class="empty">
+                    No students available
+                </td>
+            </tr>`;
+    } else if (
+        filteredIds.length === 0
+    ) {
+        studentTable.innerHTML =
+            `<tr>
+                <td
+                    colspan="11"
+                    class="empty">
+                    No students match your search/filter
+                </td>
+            </tr>`;
     }
 
-    studentCount.textContent = activeIds.length;
+    studentCount.textContent =
+        activeIds.length;
 
-    renderStudentTableFooter(filteredIds.length);
+    renderStudentTableFooter(
+        filteredIds.length
+    );
+
     attachStudentRowEvents();
 }
 
-function renderStudentTableFooter(filteredCount) {
-    const footer = document.getElementById("studentTableFooter");
+//==================================================
+// STUDENT TABLE FOOTER
+//==================================================
+
+function renderStudentTableFooter(
+    filteredCount
+) {
+    const footer =
+        document.getElementById(
+            "studentTableFooter"
+        );
+
     if (!footer) return;
 
-    if (filteredCount <= STUDENT_PAGE_SIZE) {
+    if (
+        filteredCount <=
+        STUDENT_PAGE_SIZE
+    ) {
         footer.innerHTML = "";
         return;
     }
 
-    const remaining = filteredCount - STUDENT_PAGE_SIZE;
-    footer.innerHTML = studentsExpanded
-        ? `<button class="outline-btn small-btn" id="toggleStudentsBtn">Show Less</button>`
-        : `<button class="outline-btn small-btn" id="toggleStudentsBtn">Show ${remaining} More</button>`;
+    const remaining =
+        filteredCount -
+        STUDENT_PAGE_SIZE;
 
-    document.getElementById("toggleStudentsBtn").onclick = () => {
-        studentsExpanded = !studentsExpanded;
+    footer.innerHTML =
+        studentsExpanded
+            ? `
+<button
+    class="outline-btn small-btn"
+    id="toggleStudentsBtn">
+    Show Less
+</button>
+`
+            : `
+<button
+    class="outline-btn small-btn"
+    id="toggleStudentsBtn">
+    Show ${remaining} More
+</button>
+`;
+
+    document.getElementById(
+        "toggleStudentsBtn"
+    ).onclick = () => {
+        studentsExpanded =
+            !studentsExpanded;
+
         renderStudents();
     };
 }
 
+//==================================================
+// STUDENT ROW EVENTS
+//==================================================
+
 function attachStudentRowEvents() {
-    document.querySelectorAll(".viewStudent").forEach((button) => {
-        button.onclick = () => {
-            openStudentProfile(button.dataset.id);
-        };
-    });
+    document
+        .querySelectorAll(".viewStudent")
+        .forEach((button) => {
+            button.onclick = () => {
+                openStudentProfile(
+                    button.dataset.id
+                );
+            };
+        });
 
-    document.querySelectorAll(".editStudent").forEach((button) => {
-        button.onclick = () => {
-            openStudentModal(button.dataset.id);
-        };
-    });
+    document
+        .querySelectorAll(".editStudent")
+        .forEach((button) => {
+            button.onclick = () => {
+                openStudentModal(
+                    button.dataset.id
+                );
+            };
+        });
 
-    document.querySelectorAll(".deleteStudent").forEach((button) => {
-        button.onclick = () => {
-            deletePath = "lessonPayment/students/" + button.dataset.id;
-            deleteType = "student";
-            document.getElementById("deleteModalText").textContent =
-                "This removes the student from the active list. Payments already " +
-                "counted toward the assigned teacher's earnings will be preserved.";
-            deleteModal.classList.add("active");
-        };
-    });
+    document
+        .querySelectorAll(".deleteStudent")
+        .forEach((button) => {
+            button.onclick = () => {
+                deletePath =
+                    "lessonPayment/students/" +
+                    button.dataset.id;
 
-    document.querySelectorAll(".printReceipt").forEach((link) => {
-        link.onclick = (e) => {
-            e.preventDefault();
-            const student = students[link.dataset.id];
-            if (!student) return;
-            const teacherName = teachers[student.teacherId]?.name || "Unassigned";
-            printStudentReceipt(student, teacherName);
-        };
-    });
+                deleteType = "student";
+
+                document.getElementById(
+                    "deleteModalText"
+                ).textContent =
+                    "This removes the student from the active list. Payments already counted toward the assigned teacher's earnings will be preserved.";
+
+                deleteModal.classList.add(
+                    "active"
+                );
+            };
+        });
+
+    document
+        .querySelectorAll(".printReceipt")
+        .forEach((link) => {
+            link.onclick = (e) => {
+                e.preventDefault();
+
+                const student =
+                    students[
+                        link.dataset.id
+                    ];
+
+                if (!student) return;
+
+                const teacherName =
+                    teachers[
+                        student.teacherId
+                    ]?.name ||
+                    "Unassigned";
+
+                printStudentReceipt(
+                    student,
+                    teacherName
+                );
+            };
+        });
 }
 
 //==================================================
 // SEARCH LISTENERS
 //==================================================
 
-teacherSearch.addEventListener("input", renderTeachers);
-studentSearch.addEventListener("input", () => {
-    studentsExpanded = false;
-    renderStudents();
-});
+teacherSearch.addEventListener(
+    "input",
+    renderTeachers
+);
 
-if (studentFilter) {
-    studentFilter.addEventListener("change", () => {
+studentSearch.addEventListener(
+    "input",
+    () => {
         studentsExpanded = false;
         renderStudents();
-    });
+    }
+);
+
+if (studentFilter) {
+    studentFilter.addEventListener(
+        "change",
+        () => {
+            studentsExpanded = false;
+            renderStudents();
+        }
+    );
 }
 
 if (studentTeacherFilter) {
-    studentTeacherFilter.addEventListener("change", () => {
-        studentsExpanded = false;
-        renderStudents();
-    });
+    studentTeacherFilter.addEventListener(
+        "change",
+        () => {
+            studentsExpanded = false;
+            renderStudents();
+        }
+    );
 }
 
 //==================================================
-// KEEP THE SUBSCRIPTION TIMER FRESH
-// The "Xd left" / "Finished Xd ago" badges depend on today's date, so
-// re-render the student list periodically even with no data changes.
+// KEEP SUBSCRIPTION TIMER FRESH
 //==================================================
 
-setInterval(() => {
-    renderStudents();
-}, 5 * 60 * 1000);
+setInterval(
+    () => {
+        renderStudents();
+    },
+    5 * 60 * 1000
+);
 
 //==================================================
 // RECORD TEACHER PAYMENT
-// New payments start as "pending" and only count toward
-// totals once the teacher acknowledges them on their dashboard.
+//==================================================
+//
+// Teacher payments recorded here are the actual amounts paid
+// out to the teacher. These are NOT multiplied by 33% because
+// they represent money already paid to the teacher.
+//
 //==================================================
 
-document.getElementById("savePayment").onclick = () => {
-    const teacherId = paymentTeacher.value;
-    const type = document.getElementById("paymentType").value || "add";
-    const amount = Number(document.getElementById("paymentAmount").value);
-    const date = document.getElementById("paymentDate").value;
-    const remark = document.getElementById("paymentRemark").value.trim();
+document.getElementById(
+    "savePayment"
+).onclick = () => {
+    const teacherId =
+        paymentTeacher.value;
 
-    if (teacherId === "" || !amount || amount <= 0) {
-        toast("Select teacher and enter amount");
+    const type =
+        document.getElementById(
+            "paymentType"
+        ).value || "add";
+
+    const amount =
+        Number(
+            document.getElementById(
+                "paymentAmount"
+            ).value
+        );
+
+    const date =
+        document.getElementById(
+            "paymentDate"
+        ).value;
+
+    const remark =
+        document.getElementById(
+            "paymentRemark"
+        ).value.trim();
+
+    if (
+        teacherId === "" ||
+        !amount ||
+        amount <= 0
+    ) {
+        toast(
+            "Select teacher and enter amount"
+        );
+
         return;
     }
 
-    const paymentId = push(ref(db, "lessonPayment/teacherPayments/" + teacherId)).key;
+    const paymentId =
+        push(
+            ref(
+                db,
+                "lessonPayment/teacherPayments/" +
+                teacherId
+            )
+        ).key;
 
     set(
-        ref(db, "lessonPayment/teacherPayments/" + teacherId + "/" + paymentId),
+        ref(
+            db,
+            "lessonPayment/teacherPayments/" +
+            teacherId +
+            "/" +
+            paymentId
+        ),
         {
             amount,
             type,
@@ -1034,14 +1834,31 @@ document.getElementById("savePayment").onclick = () => {
         }
     );
 
-    paymentModal.classList.remove("active");
-    document.getElementById("paymentAmount").value = "";
-    document.getElementById("paymentDate").value = "";
-    document.getElementById("paymentRemark").value = "";
-    document.getElementById("paymentType").selectedIndex = 0;
+    paymentModal.classList.remove(
+        "active"
+    );
+
+    document.getElementById(
+        "paymentAmount"
+    ).value = "";
+
+    document.getElementById(
+        "paymentDate"
+    ).value = "";
+
+    document.getElementById(
+        "paymentRemark"
+    ).value = "";
+
+    document.getElementById(
+        "paymentType"
+    ).selectedIndex = 0;
+
     paymentTeacher.selectedIndex = 0;
 
-    toast("Payment entry recorded — awaiting teacher acknowledgement");
+    toast(
+        "Payment entry recorded — awaiting teacher acknowledgement"
+    );
 };
 
 //==================================================
@@ -1050,168 +1867,428 @@ document.getElementById("savePayment").onclick = () => {
 
 onValue(paymentsRef, (snapshot) => {
     payments = snapshot.val() || {};
+
     renderTeachers();
     renderPayments();
     calculateTotals();
 });
 
-// Sums only ACKNOWLEDGED payments for one teacher, signed by entry type.
-// Legacy records saved before this feature existed have no `status` or
-// `type` field — treat those as already-acknowledged additions so
-// historical totals don't change.
-function acknowledgedReceivedForTeacher(teacherId) {
+//==================================================
+// ACKNOWLEDGED TEACHER PAYMENTS
+//==================================================
+//
+// Only acknowledged payments count as money already paid
+// to the teacher.
+//
+// Legacy records without status/type are treated as
+// acknowledged additions so historical totals remain unchanged.
+//
+//==================================================
+
+function acknowledgedReceivedForTeacher(
+    teacherId
+) {
     let received = 0;
-    const teacherPayments = payments[teacherId] || {};
 
-    Object.values(teacherPayments).forEach((payment) => {
-        const status = payment.status || "acknowledged";
-        if (status !== "acknowledged") return;
+    const teacherPayments =
+        payments[teacherId] || {};
 
-        const type = payment.type || "add";
-        const amt = Number(payment.amount || 0);
-        received += type === "deduct" ? -amt : amt;
+    Object.values(
+        teacherPayments
+    ).forEach((payment) => {
+        const status =
+            payment.status ||
+            "acknowledged";
+
+        if (
+            status !== "acknowledged"
+        ) {
+            return;
+        }
+
+        const type =
+            payment.type || "add";
+
+        const amt =
+            Number(
+                payment.amount || 0
+            );
+
+        received +=
+            type === "deduct"
+                ? -amt
+                : amt;
     });
 
     return received;
 }
 
+//==================================================
+// RENDER PAYMENTS
+//==================================================
+
 function renderPayments() {
     paymentTable.innerHTML = "";
+
     let hasPayment = false;
 
-    Object.keys(payments).forEach((teacherId) => {
-        Object.keys(payments[teacherId]).forEach((paymentId) => {
-            hasPayment = true;
-            const payment = payments[teacherId][paymentId];
-            const status = payment.status || "acknowledged";
-            const type = payment.type || "add";
-            const sign = type === "deduct" ? "−" : "+";
-            const badgeCls = type === "deduct" ? "badge-negative" : "badge-positive";
+    Object.keys(payments).forEach(
+        (teacherId) => {
+            Object.keys(
+                payments[teacherId]
+            ).forEach(
+                (paymentId) => {
+                    hasPayment = true;
 
-            paymentTable.innerHTML += `
+                    const payment =
+                        payments[
+                            teacherId
+                        ][paymentId];
+
+                    const status =
+                        payment.status ||
+                        "acknowledged";
+
+                    const type =
+                        payment.type ||
+                        "add";
+
+                    const sign =
+                        type === "deduct"
+                            ? "−"
+                            : "+";
+
+                    const badgeCls =
+                        type === "deduct"
+                            ? "badge-negative"
+                            : "badge-positive";
+
+                    paymentTable.innerHTML += `
 <tr>
-<td>${escapeHtml(teachers[teacherId]?.name) || "-"}</td>
-<td><span class="balance-badge ${badgeCls}">${sign}${money(payment.amount)}</span></td>
-<td>${payment.date || "-"}</td>
-<td>${escapeHtml(payment.remark) || "-"}</td>
-<td><span class="status-badge status-${status}">${status === "acknowledged" ? "Acknowledged" : "Pending"}</span></td>
+<td>
+${escapeHtml(
+    teachers[teacherId]?.name
+) || "-"}
+</td>
+
+<td>
+<span
+    class="balance-badge ${badgeCls}">
+    ${sign}${money(payment.amount)}
+</span>
+</td>
+
+<td>
+${payment.date || "-"}
+</td>
+
+<td>
+${escapeHtml(payment.remark) || "-"}
+</td>
+
+<td>
+<span
+    class="status-badge status-${status}">
+    ${
+        status === "acknowledged"
+            ? "Acknowledged"
+            : "Pending"
+    }
+</span>
+</td>
 </tr>
 `;
-        });
-    });
+                }
+            );
+        }
+    );
 
     if (!hasPayment) {
-        paymentTable.innerHTML = `<tr><td colspan="5" class="empty">No payment history available</td></tr>`;
+        paymentTable.innerHTML =
+            `<tr>
+                <td
+                    colspan="5"
+                    class="empty">
+                    No payment history available
+                </td>
+            </tr>`;
     }
 }
 
 //==================================================
 // DASHBOARD TOTALS
 //==================================================
+//
+// Full student fees remain stored in Firebase.
+//
+// Teacher commission:
+// Full expected fees × 33%
+// Full amount paid × 33%
+//
+// Example:
+// ₦1,000,000 × 0.33 = ₦330,000
+//
+//==================================================
 
 function calculateTotals() {
     let expectedFull = 0;
     let paidFull = 0;
 
-    // Both totals include every student ever created (deleted or not) so a
-    // student's removal never retroactively shrinks totals already
-    // reflected in acknowledged teacher payments. These are the REAL, full
-    // fee figures — division into commission happens only below.
-    Object.values(students).forEach((student) => {
-        expectedFull += Number(student.expectedPayment || 0);
-        paidFull += Number(student.amountPaid || 0);
-    });
+    Object.values(students).forEach(
+        (student) => {
+            expectedFull +=
+                Number(
+                    student.expectedPayment ||
+                    0
+                );
+
+            paidFull +=
+                Number(
+                    student.amountPaid ||
+                    0
+                );
+        }
+    );
 
     let paidOut = 0;
-    Object.keys(payments).forEach((teacherId) => {
-        paidOut += acknowledgedReceivedForTeacher(teacherId);
-    });
 
-    const commissionExpected = toCommission(expectedFull);
-    const commissionEarned = toCommission(paidFull);
-    const commissionUnearned = commissionExpected - commissionEarned;
-    const commissionPayable = commissionEarned - paidOut;
+    Object.keys(payments).forEach(
+        (teacherId) => {
+            paidOut +=
+                acknowledgedReceivedForTeacher(
+                    teacherId
+                );
+        }
+    );
 
-    commissionExpectedFull.textContent = money(commissionExpected);
-    commissionEarnedTotal.textContent = money(commissionEarned);
-    commissionUnearnedTotal.textContent = money(commissionUnearned);
-    commissionPaidOutTotal.textContent = money(paidOut);
-    commissionPayableTotal.textContent = money(commissionPayable);
+    // Exactly 33% of full student fees.
+    const commissionExpected =
+        toCommission(
+            expectedFull
+        );
 
-    setBalanceCardTone(commissionUnearnedTotal, commissionUnearned);
-    setBalanceCardTone(commissionPayableTotal, commissionPayable);
+    const commissionEarned =
+        toCommission(
+            paidFull
+        );
+
+    const commissionUnearned =
+        commissionExpected -
+        commissionEarned;
+
+    const commissionPayable =
+        commissionEarned -
+        paidOut;
+
+    commissionExpectedFull.textContent =
+        money(
+            commissionExpected
+        );
+
+    commissionEarnedTotal.textContent =
+        money(
+            commissionEarned
+        );
+
+    commissionUnearnedTotal.textContent =
+        money(
+            commissionUnearned
+        );
+
+    commissionPaidOutTotal.textContent =
+        money(
+            paidOut
+        );
+
+    commissionPayableTotal.textContent =
+        money(
+            commissionPayable
+        );
+
+    setBalanceCardTone(
+        commissionUnearnedTotal,
+        commissionUnearned
+    );
+
+    setBalanceCardTone(
+        commissionPayableTotal,
+        commissionPayable
+    );
 }
 
-// A positive balance means money is still owed (bad/red), a negative
-// balance means an overpayment/overpay-out (good/green), and zero is
-// neutral.
-function setBalanceCardTone(element, diff) {
-    const card = element.closest(".summary-card");
+//==================================================
+// BALANCE CARD TONE
+//==================================================
+
+function setBalanceCardTone(
+    element,
+    diff
+) {
+    const card =
+        element.closest(
+            ".summary-card"
+        );
+
     if (!card) return;
 
-    card.classList.remove("card-positive", "card-negative", "card-neutral");
-    card.classList.add(diff > 0 ? "card-negative" : diff < 0 ? "card-positive" : "card-neutral");
+    card.classList.remove(
+        "card-positive",
+        "card-negative",
+        "card-neutral"
+    );
+
+    card.classList.add(
+        diff > 0
+            ? "card-negative"
+            : diff < 0
+                ? "card-positive"
+                : "card-neutral"
+    );
 }
 
 //==================================================
 // DELETE CONFIRMATION MODAL
-// Students are soft-deleted (flagged, not removed) so their
-// historical amounts keep counting toward teacher earnings.
-// Teachers are still fully removed, as before.
+//==================================================
+//
+// Students are soft-deleted so their historical amounts
+// continue counting toward teacher earnings.
+//
+// Teachers are fully removed as before.
+//
 //==================================================
 
-const confirmDelete = document.getElementById("confirmDelete");
-const cancelDelete = document.getElementById("cancelDelete");
+const confirmDelete =
+    document.getElementById(
+        "confirmDelete"
+    );
+
+const cancelDelete =
+    document.getElementById(
+        "cancelDelete"
+    );
 
 cancelDelete.onclick = () => {
-    deleteModal.classList.remove("active");
+    deleteModal.classList.remove(
+        "active"
+    );
+
     deletePath = "";
     deleteType = "";
 };
 
 confirmDelete.onclick = () => {
-    if (deletePath === "") return;
-
-    if (deleteType === "student") {
-        update(ref(db, deletePath), {
-            isDeleted: true,
-            deletedAt: Date.now()
-        });
-        toast("Student removed from active list");
-    } else {
-        remove(ref(db, deletePath));
-        toast("Record deleted successfully");
+    if (deletePath === "") {
+        return;
     }
 
-    deleteModal.classList.remove("active");
+    if (deleteType === "student") {
+        update(
+            ref(db, deletePath),
+            {
+                isDeleted: true,
+                deletedAt: Date.now()
+            }
+        );
+
+        toast(
+            "Student removed from active list"
+        );
+    } else {
+        remove(
+            ref(db, deletePath)
+        );
+
+        toast(
+            "Record deleted successfully"
+        );
+    }
+
+    deleteModal.classList.remove(
+        "active"
+    );
+
     deletePath = "";
     deleteType = "";
 };
 
-// Close modals when clicking outside the box
-[teacherModal, studentModal, paymentModal, dashboardModal, teacherViewModal, studentProfileModal, deleteModal].forEach((modal) => {
-    modal.addEventListener("click", (e) => {
-        if (e.target === modal) {
-            modal.classList.remove("active");
-            if (modal === deleteModal) {
+//==================================================
+// CLOSE MODALS WHEN CLICKING OUTSIDE
+//==================================================
+
+[
+    teacherModal,
+    studentModal,
+    paymentModal,
+    dashboardModal,
+    teacherViewModal,
+    studentProfileModal,
+    deleteModal
+].forEach((modal) => {
+    if (!modal) return;
+
+    modal.addEventListener(
+        "click",
+        (e) => {
+            if (e.target !== modal) {
+                return;
+            }
+
+            modal.classList.remove(
+                "active"
+            );
+
+            if (
+                modal === deleteModal
+            ) {
                 deletePath = "";
                 deleteType = "";
             }
-            if (modal === teacherModal) editingTeacherId = null;
-            if (modal === studentModal) editingStudentId = null;
-            if (modal === studentProfileModal) viewingStudentId = null;
-            if (modal === teacherViewModal) document.getElementById("teacherViewFrame").src = "about:blank";
+
+            if (
+                modal === teacherModal
+            ) {
+                editingTeacherId = null;
+            }
+
+            if (
+                modal === studentModal
+            ) {
+                editingStudentId = null;
+            }
+
+            if (
+                modal === studentProfileModal
+            ) {
+                viewingStudentId = null;
+            }
+
+            if (
+                modal === teacherViewModal
+            ) {
+                document.getElementById(
+                    "teacherViewFrame"
+                ).src =
+                    "about:blank";
+            }
         }
-    });
+    );
 });
 
 //==================================================
 // FINISH LOADING
 //==================================================
 
-window.addEventListener("load", () => {
-    const loading = document.getElementById("loadingScreen");
-    if (loading) {
-        loading.style.display = "none";
+window.addEventListener(
+    "load",
+    () => {
+        const loading =
+            document.getElementById(
+                "loadingScreen"
+            );
+
+        if (loading) {
+            loading.style.display =
+                "none";
+        }
     }
-});
+);
