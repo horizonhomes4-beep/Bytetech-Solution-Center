@@ -1,0 +1,540 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lesson Desk | Student</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root{
+  --ink:#16261f;
+  --paper:#f7f3e9;
+  --panel:#ffffff;
+  --chalk:#e8c547;
+  --coral:#e2683d;
+  --line:#dcd0b2;
+  --muted:#6b6152;
+  --radius:14px;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+  margin:0;
+  background:var(--paper);
+  font-family:'IBM Plex Sans', Arial, sans-serif;
+  color:var(--ink);
+  background-image:
+    radial-gradient(circle at 92% 8%, rgba(232,197,71,0.18), transparent 40%),
+    radial-gradient(circle at 4% 90%, rgba(226,104,61,0.10), transparent 45%);
+}
+
+header{
+  background:var(--ink); color:var(--paper); padding:1.4rem 1.5rem; position:relative; overflow:hidden;
+}
+header::after{
+  content:""; position:absolute; inset:0;
+  background:repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0px, rgba(255,255,255,0.035) 1px, transparent 1px, transparent 34px);
+  pointer-events:none;
+}
+.header-inner{
+  max-width:1600px; margin:auto; display:flex; align-items:center; justify-content:space-between;
+  gap:1rem; flex-wrap:wrap; position:relative; z-index:1;
+}
+.brand{ display:flex; align-items:center; gap:14px; }
+.stamp{
+  width:56px; height:56px; border-radius:50%; border:2px dashed var(--chalk);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:.65rem;
+  color:var(--chalk); text-align:center; line-height:1.1; flex-shrink:0;
+}
+.brand h1{ margin:0; font-family:'Fraunces', serif; font-weight:600; font-size:1.5rem; }
+.brand p{ margin:2px 0 0; font-size:.85rem; color:#c9c2ac; }
+.role-tag{
+  font-family:'IBM Plex Mono', monospace; font-size:.75rem;
+  background:rgba(232,197,71,0.14); color:var(--chalk);
+  border:1px solid rgba(232,197,71,0.4); padding:6px 12px; border-radius:100px; white-space:nowrap;
+  display:flex; align-items:center; gap:10px;
+}
+.role-tag button{
+  background:transparent; border:1px solid rgba(247,243,233,0.4); color:var(--paper);
+  padding:5px 10px; border-radius:100px; font-family:'IBM Plex Sans', Arial, sans-serif;
+  font-size:.75rem; cursor:pointer; font-weight:600;
+}
+
+main{ max-width:1600px; margin:auto; padding:1.6rem clamp(1rem, 4vw, 3rem) 3rem; }
+
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:1.6rem; margin-bottom:1.6rem;
+}
+.card h2{ font-family:'Fraunces', serif; font-weight:600; font-size:1.3rem; margin:0 0 .3rem; }
+.card .sub{ margin:0 0 1.2rem; color:var(--muted); font-size:.9rem; }
+.eyebrow{
+  font-family:'IBM Plex Mono', monospace; font-size:.72rem; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--coral); margin:0 0 .35rem;
+}
+
+/* ---- LOGIN ---- */
+.login-wrap{ max-width:420px; margin:3rem auto; }
+.login-stamp{
+  width:72px; height:72px; border-radius:50%; border:2px dashed var(--ink);
+  display:flex; align-items:center; justify-content:center; margin:0 auto 1.2rem;
+  font-family:'IBM Plex Mono', monospace; font-size:.7rem; text-align:center; line-height:1.1;
+}
+label{ font-weight:600; display:block; margin-top:14px; margin-bottom:6px; font-size:.9rem; }
+input[type=email], input[type=password]{
+  width:100%; padding:12px; border:1.5px solid var(--line); border-radius:8px;
+  background:#fffdf8; color:var(--ink); font-family:'IBM Plex Sans', Arial, sans-serif; font-size:.95rem;
+}
+input:focus{ outline:none; border-color:var(--ink); box-shadow:0 0 0 3px rgba(22,38,31,0.08); }
+.btn-primary{
+  width:100%; margin-top:20px; padding:14px; border:none; border-radius:8px; cursor:pointer;
+  background:var(--ink); color:var(--paper); font-weight:600; font-size:.95rem;
+  font-family:'IBM Plex Sans', Arial, sans-serif;
+}
+.btn-primary:hover{ opacity:.92; }
+.login-msg{
+  margin-top:14px; padding:10px 12px; border-radius:8px; font-size:.85rem; display:none;
+  font-family:'IBM Plex Mono', monospace;
+}
+.login-msg.show{ display:block; }
+.login-err{ background:#fbe9e5; color:var(--coral); border:1px solid #f3c8ba; }
+
+/* ---- DATE PICKER ---- */
+.date-picker{ display:flex; gap:12px; flex-wrap:wrap; }
+.picker-col{ flex:1 1 140px; }
+.picker-col label{
+  font-family:'IBM Plex Mono', monospace; font-size:.72rem; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--muted); display:block; margin-bottom:6px; margin-top:0;
+}
+select{
+  width:100%; padding:12px; border:1.5px solid var(--line); border-radius:8px;
+  background:#fffdf8; color:var(--ink); font-family:'IBM Plex Sans', Arial, sans-serif;
+  font-size:.95rem; appearance:none;
+  background-image:linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+  background-position:calc(100% - 18px) center, calc(100% - 13px) center;
+  background-size:5px 5px, 5px 5px; background-repeat:no-repeat;
+}
+select:disabled{ opacity:.5; cursor:not-allowed; }
+select:focus{ outline:none; border-color:var(--ink); box-shadow:0 0 0 3px rgba(22,38,31,0.08); }
+
+/* ---- LESSON PICK CARDS (when several lessons share a day) ---- */
+.lesson-pick-grid{ display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; }
+.lesson-pick-card{
+  flex:1 1 200px; border:1.5px solid var(--line); border-radius:10px; padding:12px 14px;
+  cursor:pointer; background:#fffdf8;
+}
+.lesson-pick-card:hover{ border-color:var(--ink); }
+.lesson-pick-card.active{ border-color:var(--ink); background:rgba(22,38,31,0.04); }
+.lesson-pick-card .subj{
+  font-family:'IBM Plex Mono', monospace; font-size:.68rem; text-transform:uppercase; color:var(--coral);
+}
+.lesson-pick-card h5{ margin:4px 0 0; font-family:'Fraunces', serif; font-size:1rem; }
+
+/* ---- LESSON PICK CARD META (still used above the fold) ---- */
+.subj-chip{
+  font-family:'IBM Plex Mono', monospace; font-size:.68rem; text-transform:uppercase;
+  background:rgba(232,197,71,0.18); color:#8a6d0a; border:1px solid rgba(232,197,71,0.5);
+  border-radius:100px; padding:3px 10px; display:inline-block; margin-bottom:6px;
+}
+
+.empty-state{ text-align:center; padding:3rem 1rem; color:var(--muted); }
+.empty-state .big{ font-family:'Fraunces', serif; font-size:1.2rem; color:var(--ink); margin-bottom:6px; }
+
+/* ---- LESSON FULL-PAGE VIEWER ---- */
+.lesson-fullscreen{
+  position:fixed; inset:0; z-index:1000; background:var(--paper);
+  display:none; flex-direction:column;
+}
+.lesson-fullscreen.open{ display:flex; }
+
+.lf-topbar{
+  background:var(--ink); color:var(--paper); padding:.85rem 1.2rem;
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  box-shadow:0 2px 14px rgba(0,0,0,.18); position:relative; z-index:2; flex-shrink:0;
+}
+.lf-back{
+  background:transparent; border:1px solid rgba(247,243,233,.4); color:var(--paper);
+  padding:9px 16px; border-radius:100px; font-family:'IBM Plex Sans', Arial, sans-serif;
+  font-weight:600; font-size:.85rem; cursor:pointer; flex-shrink:0; white-space:nowrap;
+}
+.lf-back:hover{ background:rgba(247,243,233,.12); }
+.lf-back:before{ content:"←"; margin-right:6px; }
+
+.lf-meta{ flex:1 1 220px; min-width:0; }
+.lf-meta .subj-chip{ margin-bottom:3px; }
+.lf-meta h3{ margin:2px 0 0; font-family:'Fraunces', serif; font-weight:600; font-size:1.15rem; color:var(--paper);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lf-meta .lf-date{ font-size:.78rem; color:#c9c2ac; }
+
+.lf-tabs{ display:flex; gap:8px; flex-shrink:0; }
+.lf-tab{
+  background:transparent; border:1px solid rgba(247,243,233,.3); color:#c9c2ac;
+  padding:8px 18px; border-radius:100px; font-family:'IBM Plex Mono', monospace;
+  font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; font-weight:600;
+}
+.lf-tab.active{ background:var(--chalk); color:var(--ink); border-color:var(--chalk); }
+.lf-tab:hover:not(.active){ border-color:rgba(247,243,233,.6); }
+
+.lf-body{ flex:1; position:relative; background:#fff; min-height:0; }
+.lf-body iframe{ position:absolute; inset:0; width:100%; height:100%; border:none; display:block; }
+
+@media(max-width:640px){
+  .lf-topbar{ padding:.7rem .9rem; gap:10px; }
+  .lf-meta h3{ font-size:1rem; }
+  .lf-tab{ padding:7px 12px; font-size:.65rem; }
+}
+
+footer{ text-align:center; padding:24px; color:var(--muted); font-size:.85rem; }
+
+@media(max-width:640px){
+  .brand h1{ font-size:1.2rem; }
+  main{ padding:1.2rem 1rem 2.5rem; }
+  .card{ padding:1.2rem; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="stamp">LESSON<br>DESK</div>
+      <div>
+        <h1>Lesson Desk</h1>
+        <p id="headerSub">Sign in to view your lessons</p>
+      </div>
+    </div>
+    <div class="role-tag" id="roleTag" style="display:none">
+      <span id="studentNameTag"></span>
+      <button onclick="logout()">Log out</button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ================= LOGIN ================= -->
+  <div id="loginView">
+    <div class="card login-wrap">
+      <div class="login-stamp">LOG<br>IN</div>
+      <p class="eyebrow" style="text-align:center">Student access</p>
+      <h2 style="text-align:center">Sign in to Lesson Desk</h2>
+      <p class="sub" style="text-align:center">Use the email and password your teacher gave you.</p>
+
+      <form id="loginForm">
+        <label>Email</label>
+        <input type="email" id="loginEmail" required>
+        <label>Password</label>
+        <input type="password" id="loginPassword" required>
+        <button type="submit" class="btn-primary">Log in</button>
+        <div id="loginMsg" class="login-msg login-err"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= LESSON BROWSER ================= -->
+  <div id="browserView" style="display:none">
+
+    <div class="card">
+      <p class="eyebrow">Find a lesson</p>
+      <h2>Select a date</h2>
+      <p class="sub">Only dates with a lesson assigned to you or your class are shown.</p>
+
+      <div class="date-picker">
+        <div class="picker-col">
+          <label>Year</label>
+          <select id="yearSelect"><option value="">Select year</option></select>
+        </div>
+        <div class="picker-col">
+          <label>Month</label>
+          <select id="monthSelect" disabled><option value="">Select month</option></select>
+        </div>
+        <div class="picker-col">
+          <label>Day</label>
+          <select id="daySelect" disabled><option value="">Select day</option></select>
+        </div>
+      </div>
+
+      <div id="lessonPickGrid" class="lesson-pick-grid"></div>
+    </div>
+
+    <div class="card" id="emptyCard">
+      <div class="empty-state">
+        <div class="big">No lesson open yet</div>
+        <p>Pick a year, month, and day above — the lesson opens full page.</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>Lesson Desk — daily lessons, organised by date</footer>
+
+<!-- ================= LESSON FULL-PAGE VIEWER ================= -->
+<div class="lesson-fullscreen" id="lessonFullscreen">
+  <div class="lf-topbar">
+    <button class="lf-back" id="lfBackBtn" type="button">Back</button>
+    <div class="lf-meta">
+      <span class="subj-chip" id="lessonSubjectView"></span>
+      <h3 id="lessonTitleView">Lesson</h3>
+      <div class="lf-date" id="lessonDateView"></div>
+    </div>
+    <div class="lf-tabs" id="lfTabs" style="display:none">
+      <button class="lf-tab active" id="tabLessonBtn" type="button">Lesson</button>
+      <button class="lf-tab" id="tabAssignBtn" type="button">Assignment</button>
+    </div>
+  </div>
+  <div class="lf-body">
+    <iframe id="lessonFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-popups-to-escape-sandbox"></iframe>
+    <iframe id="assignmentFrame" style="display:none" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-popups-to-escape-sandbox"></iframe>
+  </div>
+</div>
+
+<!-- FIREBASE + LOGIC -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB-BUuIs7VCzeZgGXziqsAk-zr7UarRp4c",
+  authDomain: "survey-d97e7.firebaseapp.com",
+  databaseURL: "https://survey-d97e7-default-rtdb.firebaseio.com",
+  projectId: "survey-d97e7",
+  storageBucket: "survey-d97e7.firebasestorage.app",
+  messagingSenderId: "861361956801",
+  appId: "1:861361956801:web:65b2ee8eb04f5c2d5d3140",
+  measurementId: "G-QW860EGGZ9"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTHS_SHORT = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+/* ---------------- ELEMENTS ---------------- */
+const loginView = document.getElementById("loginView");
+const browserView = document.getElementById("browserView");
+const loginForm = document.getElementById("loginForm");
+const loginEmail = document.getElementById("loginEmail");
+const loginPassword = document.getElementById("loginPassword");
+const loginMsg = document.getElementById("loginMsg");
+const roleTag = document.getElementById("roleTag");
+const studentNameTag = document.getElementById("studentNameTag");
+const headerSub = document.getElementById("headerSub");
+
+const yearSelect = document.getElementById("yearSelect");
+const monthSelect = document.getElementById("monthSelect");
+const daySelect = document.getElementById("daySelect");
+const lessonPickGrid = document.getElementById("lessonPickGrid");
+
+const emptyCard = document.getElementById("emptyCard");
+const lessonFullscreen = document.getElementById("lessonFullscreen");
+const lessonFrame = document.getElementById("lessonFrame");
+const lessonTitleView = document.getElementById("lessonTitleView");
+const lessonSubjectView = document.getElementById("lessonSubjectView");
+const lessonDateView = document.getElementById("lessonDateView");
+const lfTabs = document.getElementById("lfTabs");
+const tabLessonBtn = document.getElementById("tabLessonBtn");
+const tabAssignBtn = document.getElementById("tabAssignBtn");
+const lfBackBtn = document.getElementById("lfBackBtn");
+const assignmentFrame = document.getElementById("assignmentFrame");
+
+let currentStudent = null; // { id, name, classId }
+let visibleLessons = [];   // flattened, filtered to this student
+let index = {};            // year -> month -> day -> [lesson entries]
+
+/* ---------------- LOGIN ---------------- */
+loginForm.addEventListener("submit", e => {
+  e.preventDefault();
+  const email = loginEmail.value.trim().toLowerCase();
+  const password = loginPassword.value;
+
+  get(ref(db, "students")).then(snap => {
+    if (!snap.exists()) { showLoginError("No student accounts have been set up yet."); return; }
+    let match = null;
+    snap.forEach(child => {
+      const s = child.val();
+      if ((s.email || "").toLowerCase() === email) match = { id: child.key, ...s };
+    });
+    if (!match) { showLoginError("We couldn't find an account with that email."); return; }
+    if (match.password !== password) { showLoginError("That password doesn't match our records."); return; }
+    if (match.active === false) { showLoginError("Your account has been disabled by your teacher. Contact them for access."); return; }
+
+    currentStudent = { id: match.id, name: match.name, classId: match.classId };
+    sessionStorage.setItem("lessonDeskStudent", JSON.stringify(currentStudent));
+    enterBrowser();
+  }).catch(() => showLoginError("Something went wrong. Check your connection and try again."));
+});
+
+function showLoginError(text){
+  loginMsg.textContent = text;
+  loginMsg.classList.add("show");
+}
+
+window.logout = () => {
+  currentStudent = null;
+  sessionStorage.removeItem("lessonDeskStudent");
+  loginView.style.display = "block";
+  browserView.style.display = "none";
+  roleTag.style.display = "none";
+  headerSub.textContent = "Sign in to view your lessons";
+  loginForm.reset();
+};
+
+function enterBrowser(){
+  loginView.style.display = "none";
+  browserView.style.display = "block";
+  roleTag.style.display = "flex";
+  studentNameTag.textContent = currentStudent.name || "Student";
+  headerSub.textContent = "Viewing your lessons";
+  loadVisibleLessons();
+}
+
+// resume session
+const saved = sessionStorage.getItem("lessonDeskStudent");
+if (saved) { currentStudent = JSON.parse(saved); enterBrowser(); }
+
+/* ---------------- LOAD & FILTER LESSONS ---------------- */
+function loadVisibleLessons(){
+  get(ref(db, "lessons")).then(snap => {
+    visibleLessons = [];
+    index = {};
+    if (snap.exists()) {
+      snap.forEach(dateChild => {
+        dateChild.forEach(lessonChild => {
+          const data = lessonChild.val();
+          const forClass = (data.classIds || []).includes(currentStudent.classId);
+          const forMe = (data.studentIds || []).includes(currentStudent.id);
+          if (forClass || forMe) {
+            const entry = { date: dateChild.key, id: lessonChild.key, ...data };
+            visibleLessons.push(entry);
+            const [y, m, d] = dateChild.key.split("-");
+            index[y] = index[y] || {};
+            index[y][m] = index[y][m] || {};
+            index[y][m][d] = index[y][m][d] || [];
+            index[y][m][d].push(entry);
+          }
+        });
+      });
+    }
+    buildYearOptions();
+    hideLesson();
+  });
+}
+
+function buildYearOptions(){
+  yearSelect.innerHTML = `<option value="">Select year</option>`;
+  Object.keys(index).sort().reverse().forEach(y => {
+    yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+  });
+  monthSelect.innerHTML = `<option value="">Select month</option>`;
+  monthSelect.disabled = true;
+  daySelect.innerHTML = `<option value="">Select day</option>`;
+  daySelect.disabled = true;
+  lessonPickGrid.innerHTML = "";
+}
+
+yearSelect.onchange = () => {
+  monthSelect.innerHTML = `<option value="">Select month</option>`;
+  daySelect.innerHTML = `<option value="">Select day</option>`;
+  daySelect.disabled = true;
+  lessonPickGrid.innerHTML = "";
+  hideLesson();
+
+  if (!yearSelect.value) { monthSelect.disabled = true; return; }
+  Object.keys(index[yearSelect.value]).sort().forEach(m => {
+    monthSelect.innerHTML += `<option value="${m}">${MONTHS[parseInt(m,10)-1]}</option>`;
+  });
+  monthSelect.disabled = false;
+};
+
+monthSelect.onchange = () => {
+  daySelect.innerHTML = `<option value="">Select day</option>`;
+  lessonPickGrid.innerHTML = "";
+  hideLesson();
+
+  if (!monthSelect.value) { daySelect.disabled = true; return; }
+  Object.keys(index[yearSelect.value][monthSelect.value]).sort().forEach(d => {
+    daySelect.innerHTML += `<option value="${d}">${d}</option>`;
+  });
+  daySelect.disabled = false;
+};
+
+daySelect.onchange = () => {
+  lessonPickGrid.innerHTML = "";
+  if (!daySelect.value) { hideLesson(); return; }
+  const entries = index[yearSelect.value][monthSelect.value][daySelect.value] || [];
+  if (entries.length === 1) { showLesson(entries[0]); return; }
+  hideLesson();
+  entries.forEach((entry, i) => {
+    const card = document.createElement("div");
+    card.className = "lesson-pick-card";
+    card.innerHTML = `<div class="subj">${entry.subject || "General"}</div><h5>${entry.title || "Untitled lesson"}</h5>`;
+    card.onclick = () => {
+      document.querySelectorAll(".lesson-pick-card").forEach(c => c.classList.remove("active"));
+      card.classList.add("active");
+      showLesson(entry);
+    };
+    lessonPickGrid.appendChild(card);
+  });
+};
+
+function showLesson(entry){
+  const [y, m, d] = entry.date.split("-");
+
+  lessonSubjectView.textContent = entry.subject || "General";
+  lessonTitleView.textContent = entry.title || "Untitled lesson";
+  lessonDateView.textContent = `${MONTHS[parseInt(m,10)-1]} ${parseInt(d,10)}, ${y}`;
+  lessonFrame.srcdoc = entry.html || "<p style='padding:20px;font-family:sans-serif'>This lesson has no content yet.</p>";
+
+  if (entry.assignment) {
+    lfTabs.style.display = "flex";
+    assignmentFrame.srcdoc = entry.assignment;
+  } else {
+    lfTabs.style.display = "none";
+    assignmentFrame.srcdoc = "";
+  }
+  switchTab("lesson");
+  openFullscreen();
+}
+
+function hideLesson(){
+  closeFullscreen();
+}
+
+/* ---------------- FULL-PAGE VIEWER CONTROLS ---------------- */
+function openFullscreen(){
+  lessonFullscreen.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeFullscreen(){
+  lessonFullscreen.classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+function switchTab(tab){
+  const lessonActive = tab === "lesson";
+  tabLessonBtn.classList.toggle("active", lessonActive);
+  tabAssignBtn.classList.toggle("active", !lessonActive);
+  lessonFrame.style.display = lessonActive ? "block" : "none";
+  assignmentFrame.style.display = lessonActive ? "none" : "block";
+}
+
+lfBackBtn.addEventListener("click", closeFullscreen);
+tabLessonBtn.addEventListener("click", () => switchTab("lesson"));
+tabAssignBtn.addEventListener("click", () => switchTab("assignment"));
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && lessonFullscreen.classList.contains("open")) closeFullscreen();
+});
+</script>
+
+</body>
+</html>
