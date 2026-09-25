@@ -153,7 +153,6 @@
   </tr>
 
 </table>
-```
 
   </div>
 
@@ -193,54 +192,582 @@
 </td>
 </tr>
 </table>
-<button id="installBtn" style="display:none; position:fixed; bottom:20px; left:5%; width:90%; z-index:9999; background:#1a3a8a; color:white; padding:16px; border:none; border-radius:12px; font-size:16px; font-weight:bold;">
-  📲 Install App On Your Phone
-</button>
+<!-- =========================================================
+     MATHCLOUD TUTORIAL - INSTALL GATE
+     ========================================================= -->
 
-<div id="iosInstruction" style="display:none; position:fixed; bottom:20px; left:5%; width:90%; z-index:9999; background:white; border:2px solid #1a3a8a; padding:15px; border-radius:12px; text-align:center; font-family:Arial; box-shadow:0 5px 15px rgba(0,0,0,0.3);">
-  <b>To Install on iPhone:</b><br>
-  Tap <span style="font-size:20px;">⎙</span> Share button below, then <br>
-  Scroll down and tap <b>"Add to Home Screen" 📲</b>
-  <br><br>
-  <button onclick="this.parentElement.style.display='none'" style="background:#1a3a8a; color:white; border:none; padding:8px 15px; border-radius:6px;">Close</button>
+<style>
+  /* INSTALL GATE */
+  #appInstallGate {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    background:
+      radial-gradient(circle at top right, rgba(37,99,235,.18), transparent 35%),
+      linear-gradient(135deg, #07152f, #102b67 55%, #07152f);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    font-family: Arial, Helvetica, sans-serif;
+    box-sizing: border-box;
+  }
+
+  #appInstallGate * {
+    box-sizing: border-box;
+  }
+
+  .install-card {
+    width: min(480px, 100%);
+    background: #fff;
+    border-radius: 24px;
+    padding: 30px 24px 25px;
+    text-align: center;
+    box-shadow: 0 25px 70px rgba(0,0,0,.35);
+    animation: installCardIn .35s ease;
+  }
+
+  @keyframes installCardIn {
+    from {
+      opacity: 0;
+      transform: translateY(25px) scale(.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .install-logo {
+    width: 90px;
+    height: 90px;
+    object-fit: contain;
+    border-radius: 50%;
+    margin-bottom: 15px;
+  }
+
+  .install-title {
+    margin: 0;
+    color: #102a68;
+    font-size: 27px;
+    font-weight: 800;
+  }
+
+  .install-subtitle {
+    margin: 10px 0 22px;
+    color: #475569;
+    line-height: 1.55;
+    font-size: 15px;
+  }
+
+  .install-benefits {
+    display: grid;
+    gap: 10px;
+    margin: 20px 0;
+    text-align: left;
+  }
+
+  .install-benefit {
+    background: #f1f5f9;
+    border-radius: 12px;
+    padding: 12px 14px;
+    color: #1e293b;
+    font-size: 14px;
+  }
+
+  .install-button {
+    width: 100%;
+    border: 0;
+    border-radius: 13px;
+    background: #1a3a8a;
+    color: white;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(26,58,138,.28);
+  }
+
+  .install-button:active {
+    transform: scale(.98);
+  }
+
+  .install-help {
+    margin-top: 14px;
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.5;
+  }
+
+  /* iPhone instructions */
+  #iosInstallInstructions {
+    display: none;
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 14px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    text-align: left;
+    color: #1e3a8a;
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  .ios-step {
+    margin: 8px 0;
+  }
+
+  .ios-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #1a3a8a;
+    color: #fff;
+    font-weight: bold;
+    margin-right: 7px;
+  }
+
+  #installStatus {
+    display: none;
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .browser-warning {
+    display: none;
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #fee2e2;
+    color: #991b1b;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+</style>
+
+
+<!-- INSTALLATION GATE -->
+<div id="appInstallGate">
+
+  <div class="install-card">
+
+    <img
+      src="logo.png"
+      alt="MathCloud Tutorial"
+      class="install-logo"
+      onerror="this.style.display='none'"
+    >
+
+    <h1 class="install-title">
+      Install MathCloud Tutorial
+    </h1>
+
+    <p class="install-subtitle">
+      Install the MathCloud educational app on your device
+      for a better learning experience.
+    </p>
+
+    <div class="install-benefits">
+
+      <div class="install-benefit">
+        📚 Access your lessons and practice activities easily
+      </div>
+
+      <div class="install-benefit">
+        ⚡ Faster access from your phone or computer
+      </div>
+
+      <div class="install-benefit">
+        📱 App-style experience from your Home Screen
+      </div>
+
+      <div class="install-benefit">
+        🔔 Better support for future educational features
+      </div>
+
+    </div>
+
+
+    <!-- Android / Chrome / Edge -->
+    <button
+      id="installAppButton"
+      class="install-button"
+      type="button"
+    >
+      📲 Install Educational App
+    </button>
+
+
+    <!-- iPhone/iPad instructions -->
+    <div id="iosInstallInstructions">
+
+      <strong>📱 Install on iPhone or iPad</strong>
+
+      <div class="ios-step">
+        <span class="ios-number">1</span>
+        Tap the <strong>Share</strong> button in Safari.
+      </div>
+
+      <div class="ios-step">
+        <span class="ios-number">2</span>
+        Scroll down and select
+        <strong>"Add to Home Screen"</strong>.
+      </div>
+
+      <div class="ios-step">
+        <span class="ios-number">3</span>
+        Tap <strong>"Add"</strong>.
+      </div>
+
+      <div class="ios-step">
+        <span class="ios-number">4</span>
+        Open MathCloud Tutorial from your Home Screen.
+      </div>
+
+    </div>
+
+
+    <div id="installStatus"></div>
+
+    <div id="browserWarning" class="browser-warning">
+      Your current browser does not provide the normal automatic
+      installation prompt. Please open this website in
+      <strong>Chrome, Edge, or Safari</strong> and install it there.
+    </div>
+
+
+    <div class="install-help">
+      Installation is required to continue to the educational platform.
+    </div>
+
+  </div>
+
 </div>
 
+
 <script>
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
+(function () {
 
-let deferredPrompt;
-const btn = document.getElementById('installBtn');
-const iosDiv = document.getElementById('iosInstruction');
+  "use strict";
 
-// Check if iPhone
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  /*
+   * ==========================================================
+   * MATHCLOUD PWA INSTALL MANAGER
+   * ==========================================================
+   */
 
-if (isIOS) {
-  // Show iPhone instruction if not already installed
-  if (!window.navigator.standalone) {
-    setTimeout(()=>{ iosDiv.style.display='block'; }, 3000);
+  let deferredInstallPrompt = null;
+
+  const gate = document.getElementById("appInstallGate");
+  const installButton = document.getElementById("installAppButton");
+  const iosInstructions = document.getElementById("iosInstallInstructions");
+  const installStatus = document.getElementById("installStatus");
+  const browserWarning = document.getElementById("browserWarning");
+
+
+  /* ----------------------------------------------------------
+     DEVICE DETECTION
+     ---------------------------------------------------------- */
+
+  const ua = navigator.userAgent || navigator.vendor || "";
+
+  const isIOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (
+      navigator.platform === "MacIntel" &&
+      navigator.maxTouchPoints > 1
+    );
+
+  const isAndroid = /Android/i.test(ua);
+
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    window.navigator.standalone === true;
+
+
+  /* ----------------------------------------------------------
+     CHECK IF APPLICATION IS ALREADY INSTALLED
+     ---------------------------------------------------------- */
+
+  function applicationIsInstalled() {
+
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.matchMedia("(display-mode: fullscreen)").matches ||
+      window.navigator.standalone === true
+    );
+
   }
-} else {
-  // Android / Laptop / Tablet logic
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    btn.style.display = 'block';
-  });
-  btn.addEventListener('click', async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const c = await deferredPrompt.userChoice;
-      if (c.outcome === 'accepted') btn.style.display = 'none';
-      deferredPrompt = null;
-    }
-  });
-}
 
-window.addEventListener('appinstalled', () => { 
-  btn.style.display = 'none'; 
-  iosDiv.style.display = 'none';
-});
+
+  /* ----------------------------------------------------------
+     SHOW INSTALL GATE
+     ---------------------------------------------------------- */
+
+  function showInstallGate() {
+
+    if (applicationIsInstalled()) {
+      hideInstallGate();
+      return;
+    }
+
+    gate.style.display = "flex";
+
+  }
+
+
+  /* ----------------------------------------------------------
+     HIDE INSTALL GATE
+     ---------------------------------------------------------- */
+
+  function hideInstallGate() {
+
+    gate.style.display = "none";
+
+  }
+
+
+  /* ----------------------------------------------------------
+     ANDROID / CHROME / EDGE INSTALL PROMPT
+     ---------------------------------------------------------- */
+
+  window.addEventListener(
+    "beforeinstallprompt",
+    function (event) {
+
+      event.preventDefault();
+
+      deferredInstallPrompt = event;
+
+      installButton.style.display = "block";
+
+      browserWarning.style.display = "none";
+
+    }
+  );
+
+
+  /* ----------------------------------------------------------
+     INSTALL BUTTON
+     ---------------------------------------------------------- */
+
+  installButton.addEventListener(
+    "click",
+    async function () {
+
+      if (!deferredInstallPrompt) {
+
+        /*
+         * iPhone/iPad
+         */
+        if (isIOS) {
+
+          iosInstructions.style.display = "block";
+
+          installStatus.style.display = "block";
+
+          installStatus.innerHTML =
+            "Follow the instructions above to add MathCloud Tutorial to your Home Screen.";
+
+          return;
+
+        }
+
+
+        /*
+         * Browser doesn't currently provide install prompt
+         */
+        browserWarning.style.display = "block";
+
+        installStatus.style.display = "block";
+
+        installStatus.innerHTML =
+          "If you are using Chrome or Edge, check the browser's address bar for the Install App icon.";
+
+        return;
+
+      }
+
+
+      try {
+
+        deferredInstallPrompt.prompt();
+
+        const result =
+          await deferredInstallPrompt.userChoice;
+
+
+        if (result.outcome === "accepted") {
+
+          installStatus.style.display = "block";
+
+          installStatus.innerHTML =
+            "Installing MathCloud Tutorial...";
+
+        }
+        else {
+
+          installStatus.style.display = "block";
+
+          installStatus.innerHTML =
+            "Installation was cancelled. Please install the app to continue.";
+
+        }
+
+      }
+      catch (error) {
+
+        console.error(
+          "Installation error:",
+          error
+        );
+
+      }
+
+      deferredInstallPrompt = null;
+
+    }
+  );
+
+
+  /* ----------------------------------------------------------
+     IOS
+     ---------------------------------------------------------- */
+
+  if (isIOS && !isStandalone) {
+
+    installButton.textContent =
+      "📲 How to Install on iPhone/iPad";
+
+    installButton.style.display = "block";
+
+    iosInstructions.style.display = "block";
+
+  }
+
+
+  /* ----------------------------------------------------------
+     APP INSTALLED EVENT
+     ---------------------------------------------------------- */
+
+  window.addEventListener(
+    "appinstalled",
+    function () {
+
+      deferredInstallPrompt = null;
+
+      installStatus.style.display = "block";
+
+      installStatus.innerHTML =
+        "✅ MathCloud Tutorial has been installed. Opening your app...";
+
+      setTimeout(function () {
+
+        hideInstallGate();
+
+      }, 1200);
+
+    }
+  );
+
+
+  /* ----------------------------------------------------------
+     DISPLAY MODE CHANGE
+     ---------------------------------------------------------- */
+
+  const displayModeMedia =
+    window.matchMedia("(display-mode: standalone)");
+
+  displayModeMedia.addEventListener(
+    "change",
+    function (event) {
+
+      if (event.matches) {
+
+        hideInstallGate();
+
+      }
+
+    }
+  );
+
+
+  /* ----------------------------------------------------------
+     SERVICE WORKER
+     ---------------------------------------------------------- */
+
+  if ("serviceWorker" in navigator) {
+
+    window.addEventListener(
+      "load",
+      function () {
+
+        navigator.serviceWorker
+          .register("./sw.js")
+          .then(function (registration) {
+
+            console.log(
+              "MathCloud service worker registered:",
+              registration.scope
+            );
+
+          })
+          .catch(function (error) {
+
+            console.error(
+              "Service worker registration failed:",
+              error
+            );
+
+          });
+
+      }
+    );
+
+  }
+
+
+  /* ----------------------------------------------------------
+     STARTUP
+     ---------------------------------------------------------- */
+
+  window.addEventListener(
+    "load",
+    function () {
+
+      /*
+       * Give the browser time to determine display mode.
+       */
+
+      setTimeout(function () {
+
+        if (!applicationIsInstalled()) {
+
+          showInstallGate();
+
+        }
+        else {
+
+          hideInstallGate();
+
+        }
+
+      }, 500);
+
+    }
+  );
+
+
+})();
 </script>
 </body>
 </html>
