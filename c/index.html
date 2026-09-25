@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="description" content="Universal MathCloud Progressive Web App installation demo">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MathCloud">
+<meta name="application-name" content="MathCloud">
+<meta name="msapplication-TileColor" content="#2563eb">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="icon" href="./icon-192.png">
+<title>MathCloud Universal PWA</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Arial,sans-serif;background:linear-gradient(135deg,#eff6ff,#f8fafc);color:#0f172a;display:grid;place-items:center;padding:20px}
+.card{width:min(620px,100%);background:#fff;border-radius:24px;padding:30px;box-shadow:0 20px 60px #0f172a1f;text-align:center}
+.logo{width:86px;height:86px;margin:0 auto 18px;border-radius:22px;background:#2563eb;color:#fff;display:grid;place-items:center;font-size:30px;font-weight:800}
+h1{margin:0 0 10px;font-size:clamp(28px,8vw,44px)}
+p{color:#475569;line-height:1.6}
+button{border:0;border-radius:14px;padding:16px 25px;background:#2563eb;color:#fff;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 10px 25px #2563eb40}
+button:active{transform:scale(.98)}
+#installBtn{display:none}
+#status{margin:18px 0;font-weight:600;line-height:1.5}
+.instructions{display:none;text-align:left;background:#f1f5f9;border-radius:14px;padding:16px;margin-top:18px;font-size:14px;line-height:1.6}
+.instructions strong{color:#0f172a}
+.badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:12px;font-weight:700;margin-bottom:15px}
+</style>
+</head>
+<body>
+<main class="card">
+<div class="badge">UNIVERSAL PWA INSTALL DEMO</div>
+<div class="logo">MC</div>
+<h1>MathCloud App</h1>
+<p>Install this website as an app on Android, iPhone, iPad, Windows, macOS, ChromeOS and other supported devices.</p>
+
+<button id="installBtn">Install MathCloud App</button>
+<div id="status">Checking installation options...</div>
+
+<div id="manualAndroid" class="instructions">
+<strong>Android:</strong><br>
+If the Install button is not available, open the browser menu <strong>⋮</strong> and choose
+<strong>Install app</strong> or <strong>Add to Home screen</strong>.
+</div>
+
+<div id="manualIOS" class="instructions">
+<strong>iPhone / iPad:</strong><br>
+Open this page in <strong>Safari</strong>, tap the <strong>Share</strong> button,
+then choose <strong>Add to Home Screen</strong>.
+</div>
+
+<div id="manualDesktop" class="instructions">
+<strong>Computer:</strong><br>
+Use the browser's install icon in the address bar, or the browser menu → <strong>Install app</strong>.
+</div>
+</main>
+
+<script>
+(() => {
+  const installBtn = document.getElementById("installBtn");
+  const status = document.getElementById("status");
+  const androidHelp = document.getElementById("manualAndroid");
+  const iosHelp = document.getElementById("manualIOS");
+  const desktopHelp = document.getElementById("manualDesktop");
+
+  let deferredPrompt = null;
+
+  const ua = navigator.userAgent || "";
+  const isIOS = /iphone|ipad|ipod/i.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAndroid = /android/i.test(ua);
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true ||
+    document.referrer.includes("android-app://");
+
+  function showPlatformHelp() {
+    androidHelp.style.display = isAndroid ? "block" : "none";
+    iosHelp.style.display = isIOS ? "block" : "none";
+    desktopHelp.style.display = (!isAndroid && !isIOS) ? "block" : "none";
+  }
+
+  if (isStandalone) {
+    status.textContent = "MathCloud is already installed and running as an app.";
+    installBtn.style.display = "none";
+    return;
+  }
+
+  showPlatformHelp();
+
+  // Register the service worker.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async () => {
+      try {
+        await navigator.serviceWorker.register("./sw.js", { scope: "./" });
+        console.log("MathCloud service worker registered.");
+      } catch (error) {
+        console.error("Service worker registration failed:", error);
+        status.textContent =
+          "The service worker could not be registered. Make sure the site is served over HTTPS or localhost.";
+      }
+    });
+  }
+
+  // Chromium browsers: Android Chrome, Edge, Samsung Internet,
+  // desktop Chrome/Edge and compatible browsers may expose this event.
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredPrompt = event;
+
+    installBtn.style.display = "inline-block";
+    status.textContent = "Your device supports direct installation. Tap Install.";
+  });
+
+  installBtn.addEventListener("click", async () => {
+    if (!deferredPrompt) {
+      if (isIOS) {
+        status.textContent =
+          "On iPhone/iPad, use Safari → Share → Add to Home Screen.";
+      } else if (isAndroid) {
+        status.textContent =
+          "Open your browser menu ⋮ and choose Install app or Add to Home screen.";
+      } else {
+        status.textContent =
+          "Open your browser menu and choose Install app or Add to Home screen.";
+      }
+      showPlatformHelp();
+      return;
+    }
+
+    deferredPrompt.prompt();
+
+    try {
+      const choice = await deferredPrompt.userChoice;
+      status.textContent =
+        choice.outcome === "accepted"
+          ? "Installation accepted. Your app should now be installing."
+          : "Installation was cancelled.";
+    } catch (error) {
+      console.error(error);
+      status.textContent = "The installation prompt was closed.";
+    }
+
+    deferredPrompt = null;
+    installBtn.style.display = "none";
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredPrompt = null;
+    installBtn.style.display = "none";
+    status.textContent = "MathCloud has been installed successfully.";
+  });
+
+  // If the browser does not expose beforeinstallprompt, do not claim
+  // that installation is impossible. Show the platform-specific route.
+  setTimeout(() => {
+    if (!deferredPrompt && !isStandalone) {
+      showPlatformHelp();
+
+      if (isIOS) {
+        status.textContent =
+          "For iPhone/iPad, use Safari → Share → Add to Home Screen.";
+      } else if (isAndroid) {
+        status.textContent =
+          "If no Install button appears, use your browser menu → Install app or Add to Home screen.";
+      } else {
+        status.textContent =
+          "Use your browser menu → Install app or Add to Home screen.";
+      }
+    }
+  }, 1500);
+})();
+</script>
+</body>
+</html>
