@@ -1,0 +1,159 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>JAMB Mock — MathCloud Tutorial</title><link rel="stylesheet" href="../shared/styles.css"><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script><script>window.MathJax={loader:{load:['[tex]/ams','[tex]/mhchem']},tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]],processEscapes:true,packages:{"[+]" : ["ams","mhchem"]}},chtml:{scale:1.05},options:{skipHtmlTags:["script","noscript","style","textarea","pre","code"]}};</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head>
+<body><div id="processingOverlay" class="mc-processing" hidden aria-live="polite" aria-busy="true"><div class="mc-processing-card"><div class="mc-logo-wrap"><img src="../assets/logo.png" alt="MathCloud Tutorial"></div><div class="mc-spinner"></div><h2 id="processingTitle">Preparing your mock</h2><p id="processingText">Loading your questions securely from MathCloud...</p><div class="mc-progress"><span></span></div><small>Please wait while we prepare your assessment.</small></div></div><header class="topbar"><div class="brand"><img src="../assets/logo.png" alt="MathCloud Tutorial logo"><span>MathCloud JAMB · Mock</span></div><div class="topnav"><a href="dashboard.html">Dashboard</a><a href="results.html">Results</a></div></header><main class="container"><div id="notice" class="notice" hidden></div>
+<section id="locked" class="card" hidden><h2>Subscription required</h2><p>Your active subscription is required to take a mock.</p></section>
+<section id="start" class="card" hidden><div class="hero"><p class="muted" style="margin:0;color:#e8efff">JAMB-standard preparation simulation</p><h1>Choose your mock</h1><p class="muted" style="margin:0;color:#e8efff">Full mock: 180 questions — 60 Use of English and 40 each in three other registered subjects. Duration: 2 hours. This is a preparation estimate, not an official JAMB result.</p></div><div class="grid grid-2" style="margin-top:18px"><div class="card"><h2>Full 4-subject mock</h2><p class="muted">Each subject contributes a maximum of 100 points, for a maximum combined score of 400.</p><button class="btn btn-primary" id="fullMock">Start full mock</button></div><div class="card"><h2>Subject mock</h2><p class="muted">One registered subject. Subject results are scored on a 100-point scale.</p><select id="subjectPick"></select><button class="btn btn-secondary" id="subjectMock" style="margin-top:10px">Start subject mock</button></div></div></section>
+<section id="exam" hidden><div class="cbt-grid"><div><div class="row" style="justify-content:space-between"><div><h1 id="subject"></h1><div class="muted" id="counter"></div></div><span class="pill pending" id="timer">120:00</span></div>
+<div class="card" style="margin-top:15px"><div class="question-text" id="question"></div><div id="options" style="margin-top:16px"></div><div class="actions"><button class="btn btn-secondary" id="prev">Previous</button><button class="btn btn-primary" id="next">Next</button><button class="btn btn-secondary" id="flag">Flag Question</button><button class="btn btn-dark" id="submit">Submit Mock</button><button class="btn btn-secondary" id="close">Close</button></div></div></div>
+<aside class="card"><h3>Question key</h3><div id="paletteSummary" class="muted"></div><div class="actions" style="margin:10px 0"><button class="btn btn-secondary" id="showAnswered">All Answered</button><button class="btn btn-secondary" id="showFlagged">All Flagged</button><button class="btn btn-secondary" id="showAll">All Questions</button></div><div id="palette" class="actions"></div></aside></div></section>
+<section id="result" hidden></section></main>
+<script src="../shared/app-config.js"></script><script src="../shared/firebase-config.js"></script><script src="../shared/app.js"></script><script src="../shared/mathjax-renderer.js"></script><script src="../shared/calculator.js"></script><script>
+let all=[],originalQuestionSet=[],index=0,answers={},flags=new Set(),submitted=false,seconds=0,timer=null,mockMode="",mockSubject="",studentSubjects=[],currentUserData=null,currentUser=null,sessionId=null;
+const NAMES={english:"Use of English",agriculture:"Agricultural Science",arabic:"Arabic",art:"Art / Fine Art",biology:"Biology",chemistry:"Chemistry",crs:"Christian Religious Studies",commerce:"Commerce",economics:"Economics",french:"French",geography:"Geography",government:"Government",hausa:"Hausa",history:"History","home-economics":"Home Economics",igbo:"Igbo","islamic-studies":"Islamic Studies",literature:"Literature-in-English",mathematics:"Mathematics",music:"Music",physics:"Physics","principles-of-accounts":"Principles of Accounts","computer-studies":"Computer Studies","physical-health-education":"Physical and Health Education",yoruba:"Yoruba"};
+function render(){
+  const q=all[index];if(!q)return;
+  $("#subject").textContent=NAMES[q.subject]||q.subjectName||q.subject;
+  McCalculator.setSubject(q.subject||mockSubject);
+  $("#counter").textContent=`Question ${index+1} of ${all.length}`;$("#question").innerHTML=mcMathTex(escapeHtml(q.question),q.subject||mockSubject);
+  $("#options").innerHTML=Object.entries(q.options||{}).map(([k,v])=>`<label class="question-option ${answers[index]===k?"selected":""}"><input type="radio" name="answer" value="${escapeHtml(k)}" ${answers[index]===k?"checked":""} ${(submitted||!!answers[index])?"disabled":""}> <strong>${escapeHtml(k)}.</strong> ${mcMathTex(escapeHtml(v),q.subject||mockSubject)}</label>`).join("");
+  $$("#options input").forEach(x=>x.onchange=async()=>{if(answers[index])return;try{const ok=await lockAssessmentAnswer(currentUser?.uid,sessionId,index,x.value);if(!ok)throw new Error("locked");answers[index]=x.value;render()}catch(e){showNotice("This answer could not be locked. Please try again.","error")}});
+  addReadAloudButton($("#question"),()=>{const q=all[index],chosen=answers[index];return q.question+". "+Object.entries(q.options||{}).map(([k,v])=>`${k}. ${v}`).join(". ")+(chosen?`. Selected answer: ${chosen}.`:"")});
+  $("#prev").disabled=index===0;$("#next").disabled=index===all.length-1;$("#flag").textContent=flags.has(index)?"Unflag Question":"Flag Question";renderPalette();mcTypesetSoon(document.getElementById("question"));mcTypesetSoon(document.getElementById("options"));
+}
+function renderPalette(filter="all"){
+  const answered=all.filter((q,i)=>answers[i]).length,flagged=flags.size;$("#paletteSummary").textContent=`Answered ${answered}/${all.length} · Unanswered ${all.length-answered} · Flagged ${flagged}`;
+  let ids=all.map((q,i)=>i);if(filter==="answered")ids=ids.filter(i=>!!answers[i]);if(filter==="flagged")ids=ids.filter(i=>flags.has(i));
+  $("#palette").innerHTML=ids.map(i=>`<button type="button" class="question-key ${answers[i]?"answered":""} ${i===index?"active":""} ${flags.has(i)?"flagged":""}" data-jump="${i}">${i+1}</button>`).join("")||`<span class="muted">No questions in this view.</span>`;
+  $$("[data-jump]").forEach(b=>b.onclick=()=>{index=Number(b.dataset.jump);render()});
+}
+async function loadFlaggedQuestions(){
+  const flagged=all.filter((q,i)=>flags.has(i));if(!flagged.length){showNotice("There are no flagged questions yet.","warning");return}
+  const old=all,oldAnswers={...answers};all=flagged;answers={};all.forEach((q,i)=>{const oldIndex=old.findIndex(x=>String(x.id)===String(q.id));if(oldIndex>=0&&oldAnswers[oldIndex])answers[i]=oldAnswers[oldIndex]});
+  flags=new Set(all.map((_,i)=>i));index=0;sessionId=await createAssessmentSession(currentUser.uid,{mode:"mock",scopeKey:`${mockMode}:flagged`,subject:mockSubject||null,questionIds:all.map(q=>q.id).filter(Boolean)});render();showNotice(`Loaded all ${all.length} flagged questions into the quiz engine.`,"success");
+}
+function restoreAllQuestions(){
+  if(!originalQuestionSet.length)return;const old=all,oldAnswers={...answers};all=originalQuestionSet.slice();answers={};
+  all.forEach((q,i)=>{const oldIndex=old.findIndex(x=>String(x.id)===String(q.id));if(oldIndex>=0&&oldAnswers[oldIndex])answers[i]=oldAnswers[oldIndex]});
+  flags=new Set();index=0;render();
+}
+function tick(){seconds=Math.max(0,seconds-1);$("#timer").textContent=`${String(Math.floor(seconds/60)).padStart(2,"0")}:${String(seconds%60).padStart(2,"0")}`;if(seconds===0)submitExam(true)}
+async function buildMock(subjects){
+  const requested=[...new Set((subjects||[]).filter(Boolean))];
+  if(!requested.length)throw new Error("No subject was selected.");
+  const needs={};requested.forEach(s=>needs[s]=s==="english"?60:40);
+  const totalRequired=requested.reduce((n,s)=>n+needs[s],0);
+  showProcessing("Preparing your mock",`Checking the question index for ${totalRequired} fresh questions…`);
+  try{
+    const indexBags=await Promise.all(requested.map(sid=>mcRead(`publicQuestionIndex/${sid}`,{ttl:60000})));
+    const pools={};
+    const missingIndex=[];
+    requested.forEach((sid,i)=>{
+      const rows=Object.entries(indexBags[i]||{})
+        .filter(([,v])=>v?.active!==false)
+        .map(([id,v])=>({id:String(id),topicId:v?.topicId||"",topic:v?.topic||"",subject:sid}));
+      pools[sid]=rows;
+      if(!rows.length)missingIndex.push(sid);
+    });
+    if(missingIndex.length){
+      showProcessing("Preparing your mock","Using the compatibility loader for older question records…");
+      const legacy=await Promise.all(missingIndex.map(sid=>mcQueryChild("publicQuestions","subject",sid,{ttl:120000})));
+      missingIndex.forEach((sid,i)=>{pools[sid]=flattenAssessmentQuestions(legacy[i]||{}).filter(q=>q.id).map(q=>({id:String(q.id),topicId:q.topicId||"",topic:q.topic||"",subject:sid}))});
+    }
+    let recent=new Set();
+    try{recent=await getRecentAssessmentQuestionIds(auth.currentUser.uid,"mock",mockMode)}catch(e){}
+    const selectedBySubject={};const counts={};
+    for(const sid of requested){
+      const unique=[];const seen=new Set(),seenTopics=new Set();
+      for(const q of pools[sid]||[]){
+        if(seen.has(q.id))continue;seen.add(q.id);unique.push(q);
+      }
+      let available=unique.filter(q=>!recent.has(q.id));
+      if(available.length<needs[sid])available=unique;
+      const picked=fisherYates(available).slice(0,needs[sid]);
+      selectedBySubject[sid]=picked.map(q=>q.id);counts[sid]=picked.length;
+    }
+    const requiredOk=mockMode==="full"?requested.length===4&&requested.includes("english")&&requested.reduce((n,s)=>n+needs[s],0)===180:requested.length===1;
+    const enough=Object.values(counts).every((n,i)=>n>0)&&requested.every(s=>counts[s]>=needs[s]);
+    if(!requiredOk||!enough)throw new Error(`Not enough usable questions: ${requested.map(s=>`${NAMES[s]||s}: ${counts[s]||0}/${needs[s]}`).join(" · ")}`);
+    const selected=requested.flatMap(sid=>selectedBySubject[sid]);
+    showProcessing("Building your mock",`Loading ${selected.length} selected questions…`);
+    const loaded=await Promise.all(selected.map(id=>mcRead(`publicQuestions/${id}`,{ttl:300000})));
+    all=loaded.map((raw,i)=>normalizeAssessmentQuestion(raw,selected[i])).filter(Boolean);
+    // Final safety: never present duplicate question text, even if the database has duplicate IDs/records.
+    const seenText=new Set();
+    all=all.filter(q=>{const fp=questionFingerprint(q);if(seenText.has(fp))return false;seenText.add(fp);return true});
+    const actualCounts={};all.forEach(q=>{actualCounts[q.subject]=(actualCounts[q.subject]||0)+1});
+    if(!requested.every(s=>(actualCounts[s]||0)>=needs[s]))throw new Error("Some selected questions could not be loaded. Please start a new mock.");
+    index=0;answers={};flags=new Set();submitted=false;
+    seconds=mockMode==="full"?120*60:Math.ceil((all.length/180)*120*60);
+    originalQuestionSet=all.slice();
+    sessionId=await createAssessmentSession(auth.currentUser.uid,{mode:"mock",scopeKey:mockMode,subject:mockSubject||null,questionIds:all.map(q=>q.id).filter(Boolean)});
+    if(sessionId)sessionStorage.setItem("mcMockSession",sessionId);
+    hideProcessing();$("#start").hidden=true;$("#result").hidden=true;$("#exam").hidden=false;render();
+    clearInterval(timer);timer=setInterval(tick,1000);
+  }catch(e){hideProcessing();throw e}
+}
+function showProcessing(title,text){const o=$("#processingOverlay");if(!o)return;$("#processingTitle").textContent=title||"Processing";$("#processingText").textContent=text||"Please wait...";o.hidden=false;document.body.classList.add("mc-busy")}
+function hideProcessing(){const o=$("#processingOverlay");if(o)o.hidden=true;document.body.classList.remove("mc-busy")}
+$("#fullMock").onclick=async()=>{if(studentSubjects.length!==4||studentSubjects[0]!=="english"){showNotice("A full mock requires Use of English plus three other registered subjects.","warning");return}try{mockMode="full";mockSubject="";await buildMock(studentSubjects)}catch(e){showNotice(e.message||"The live question bank could not be loaded.","warning")}};
+$("#subjectMock").onclick=async()=>{try{mockMode="subject";mockSubject=$("#subjectPick").value;await buildMock([mockSubject])}catch(e){showNotice(e.message||"The live question bank could not be loaded.","warning")}};
+function closeExam(){McCalculator.setEnabled(false);if(window.opener&&!window.opener.closed)window.close();else location.href="dashboard.html"}
+$("#next").onclick=()=>{if(index<all.length-1){index++;render()}};$("#prev").onclick=()=>{if(index>0){index--;render()}};$("#flag").onclick=()=>{flags.has(index)?flags.delete(index):flags.add(index);render()};$("#showAnswered").onclick=()=>renderPalette("answered");$("#showFlagged").onclick=loadFlaggedQuestions;$("#showAll").onclick=restoreAllQuestions;$("#close").onclick=()=>{if(!submitted&&all.length&&!confirm("Close this mock without submitting? Your answers will not be saved."))return;closeExam()};$("#submit").onclick=()=>submitExam(false);
+
+async function submitExam(auto){
+  if(submitted)return;
+  const answered=all.filter((q,i)=>answers[i]).length;
+  if(!auto&&answered<all.length&&!confirm(`You have ${all.length-answered} unanswered question${all.length-answered===1?"":"s"}. Submit anyway?`))return;
+  submitted=true;clearInterval(timer);
+  let totalCorrect=0;const subjectStats={},topicStats={};
+  all.forEach((q,i)=>{
+    const sid=q.subject||"unknown",topic=q.topic||q.topicName||q.topicId||"General",ok=answers[i]===q.correctAnswer;
+    if(ok)totalCorrect++;
+    if(!subjectStats[sid])subjectStats[sid]={subject:sid,subjectName:q.subjectName||NAMES[sid]||sid,correct:0,total:0,percentage:0,scaledScore:0,topics:{}};
+    subjectStats[sid].total++;if(ok)subjectStats[sid].correct++;
+    const tkey=topicKey(topic);
+    if(!subjectStats[sid].topics[tkey])subjectStats[sid].topics[tkey]={topic,correct:0,total:0,percentage:0};
+    subjectStats[sid].topics[tkey].total++;if(ok)subjectStats[sid].topics[tkey].correct++;
+    const globalKey=sid+"::"+tkey;
+    if(!topicStats[globalKey])topicStats[globalKey]={subject:sid,subjectName:q.subjectName||NAMES[sid]||sid,topic,correct:0,total:0,percentage:0};
+    topicStats[globalKey].total++;if(ok)topicStats[globalKey].correct++;
+  });
+  Object.values(subjectStats).forEach(s=>{s.percentage=assessmentPercentage(s.correct,s.total);s.scaledScore=Number((s.correct/s.total*jambSubjectMax(s.subject)).toFixed(2));Object.values(s.topics).forEach(t=>t.percentage=assessmentPercentage(t.correct,t.total))});
+  Object.values(topicStats).forEach(t=>t.percentage=assessmentPercentage(t.correct,t.total));
+  const overallPct=assessmentPercentage(totalCorrect,all.length);
+  const rawFullScore=Object.values(subjectStats).reduce((n,s)=>n+Number(s.scaledScore||0),0);
+  const estimated=mockMode==="full"?Math.max(0,Math.min(400,Math.round(rawFullScore))):Math.max(0,Math.min(jambSubjectMax(mockSubject),Math.round(Number(totalCorrect)/Number(all.length)*jambSubjectMax(mockSubject))));
+  const record={mode:"mock",mockType:mockMode,mockSubject:mockSubject||null,score:totalCorrect,total:all.length,percentage:overallPct,estimatedJambScore:estimated,maxJambScore:mockMode==="full"?400:jambSubjectMax(mockSubject),answeredCount:answered,unansweredCount:all.length-answered,flaggedCount:flags.size,questionIds:all.map(q=>q.id).filter(Boolean),subjectBreakdown:subjectStats,topicBreakdown:topicStats,completedAt:firebase.database.ServerValue.TIMESTAMP};
+  try{
+    if(!sessionId) throw new Error("This mock session has expired. Please start a new mock.");
+    const attemptRef=db.ref(`studentAttempts/${auth.currentUser.uid}/${sessionId}`);
+    let savedRecord=null;
+    try{
+      const existing=await attemptRef.once("value");
+      if(existing.exists()) savedRecord=existing.val();
+      else {
+        await attemptRef.set({...record,sessionId});
+        savedRecord={...record,sessionId};
+        try{await rememberAssessmentQuestions(auth.currentUser.uid,record.questionIds)}catch(historyError){console.warn("Question history sync failed; mock result remains saved.",historyError)}
+      }
+    }catch(saveError){
+      // A Firebase write can time out after the server has already accepted it.
+      // Re-read the deterministic session key before telling the student it failed.
+      const confirmed=await attemptRef.once("value").catch(()=>null);
+      if(confirmed?.exists()) savedRecord=confirmed.val();
+      else throw saveError;
+    }
+    submitted=true;
+    try{await closeAssessmentSession(auth.currentUser.uid,sessionId)}catch(sessionError){console.warn("Mock result saved but session close failed",sessionError)}
+    sessionStorage.removeItem("mcMockSession");
+    McCalculator.setEnabled(false);$("#exam").hidden=true;$("#result").hidden=false;
+    const metrics=calculateMockPerformance([savedRecord||record],studentSubjects),subjectCards=Object.values(subjectStats).map(v=>`<div class="card"><h3>${escapeHtml(v.subjectName)}</h3><div class="stat" style="font-size:28px">${v.scaledScore.toFixed(2)}/${jambSubjectMax(v.subject)}</div><p class="muted">${v.correct}/${v.total} correct · ${v.percentage.toFixed(2)}%</p></div>`).join("");
+    $("#result").innerHTML=`<section class="card"><div class="hero"><p class="muted" style="color:#e8efff">MathCloud Tutorial performance estimate</p><h1>${mockMode==="full"?"Full mock completed":"Subject mock completed"}</h1><div class="stat">${estimated}${mockMode==="full"?"/400":"/"+jambSubjectMax(mockSubject)}</div><p>${totalCorrect}/${all.length} correct · ${overallPct.toFixed(2)}% · ${answered}/${all.length} answered · ${flags.size} flagged</p></div><div class="grid grid-2" style="margin-top:16px">${subjectCards}</div><div class="card" style="margin-top:16px"><strong>This mock's contribution to your all-time result</strong><p class="muted">All-time best and average /400 are calculated from the best and average recorded mock performance in each registered subject.</p><div class="grid grid-2"><div><div class="muted">All-time best /400</div><div class="stat" style="font-size:30px">${metrics.allTimeBest400}/400</div></div><div><div class="muted">Average /400</div><div class="stat" style="font-size:30px">${metrics.average400}/400</div></div></div></div><div class="actions" style="margin-top:18px"><button class="btn btn-primary" id="retake">Retake — New Set</button><a class="btn btn-secondary" href="results.html">View Full Analysis</a><button class="btn btn-secondary" id="closeResult">Close</button></div></section>`;
+    $("#retake").onclick=()=>buildMock(mockMode==="full"?studentSubjects:[mockSubject]);$("#closeResult").onclick=closeExam;
+  }catch(e){
+    console.error("Mock submission failed",e);
+    submitted=false;
+    showNotice("Your result could not be submitted. Please do not click Submit again until this message is resolved.","error");
+  }
+}
+requireStudentAuth(async(user,data)=>{currentUser=user;currentUserData=data;if(!subscriptionActive(data)){$("#locked").hidden=false;return}studentSubjects=getStudentSubjects(data);$("#subjectPick").innerHTML=studentSubjects.map(id=>`<option value="${escapeHtml(id)}">${escapeHtml(NAMES[id]||id)} — ${id==="english"?60:40} questions</option>`).join("");$("#start").hidden=false});
+</script></body></html>

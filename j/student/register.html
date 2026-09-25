@@ -1,0 +1,255 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Create account — MathCloud JAMB</title><link rel="stylesheet" href="../shared/styles.css"><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<style>
+:root{--mc-navy:#071a3d;--mc-blue:#1264d6;--mc-cyan:#12a9e8;--mc-gold:#f5b72b;--mc-bg:#f4f8ff;--mc-text:#17233b;--mc-muted:#6b7890;--mc-border:#dce6f3;--mc-card:#fff;--mc-green:#159a68;--mc-red:#d64545}
+*{box-sizing:border-box}
+body{margin:0!important;min-height:100vh;background:radial-gradient(circle at 8% 5%,#dff4ff 0,transparent 28%),radial-gradient(circle at 95% 90%,#fff0c7 0,transparent 26%),var(--mc-bg)!important;color:var(--mc-text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.auth{min-height:100vh;padding:30px 16px 50px;display:flex;justify-content:center;align-items:flex-start}
+.auth-card{width:min(980px,100%);background:rgba(255,255,255,.96)!important;border:1px solid rgba(220,230,243,.9);border-radius:26px!important;padding:32px!important;box-shadow:0 24px 70px rgba(7,26,61,.12)!important;position:relative;overflow:hidden}
+.auth-card:before{content:"";position:absolute;inset:0 0 auto;height:7px;background:linear-gradient(90deg,var(--mc-navy),var(--mc-blue),var(--mc-cyan),var(--mc-gold))}
+.brand{display:flex!important;align-items:center;gap:13px;margin-bottom:20px!important}
+.brand img{width:54px!important;height:54px!important;object-fit:contain;border-radius:14px;background:#fff;padding:5px;box-shadow:0 8px 20px rgba(18,100,214,.12)}
+.brand span{font-weight:800!important;font-size:20px!important;color:var(--mc-navy)}
+h2{font-size:32px!important;line-height:1.15;margin:5px 0 9px!important;color:var(--mc-navy)!important;letter-spacing:-.6px}
+.subtitle{color:var(--mc-muted)!important;max-width:760px;line-height:1.65;margin:0 0 25px!important}
+.notice{border-radius:12px!important;padding:13px 15px!important;margin:0 0 18px!important;font-weight:600}
+.grid{gap:18px!important}.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.field{margin-bottom:17px!important}
+.field label{display:block;font-size:13px!important;font-weight:800!important;color:#33415c!important;margin-bottom:7px!important}
+.field input,.field select{width:100%;min-height:49px!important;border:1px solid var(--mc-border)!important;border-radius:12px!important;background:#fbfdff!important;color:var(--mc-text)!important;padding:12px 14px!important;font-size:15px!important;outline:none!important;transition:.18s ease}
+.field input:focus,.field select:focus{border-color:var(--mc-blue)!important;box-shadow:0 0 0 4px rgba(18,100,214,.10)!important;background:#fff!important}
+.field input:disabled,.field select:disabled{background:#f0f4f9!important;color:#9aa6b8!important;cursor:not-allowed}
+.card{background:linear-gradient(135deg,#f7fbff,#fff)!important;border:1px solid var(--mc-border)!important;border-radius:17px!important;box-shadow:none!important}
+.card .muted:first-child{font-weight:800;color:var(--mc-navy)!important}
+.subject-chip{display:inline-flex!important;align-items:center;margin:4px 6px 4px 0!important;padding:8px 12px!important;border-radius:999px!important;background:#e9f3ff!important;color:#0758b9!important;border:1px solid #c9e1ff!important;font-size:13px!important;font-weight:700!important}
+.btn{min-height:51px!important;border-radius:12px!important;font-weight:800!important;font-size:15px!important;cursor:pointer;transition:transform .15s,box-shadow .15s,filter .15s}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.02)}
+.btn-primary{background:linear-gradient(135deg,var(--mc-navy),var(--mc-blue))!important;box-shadow:0 10px 22px rgba(18,100,214,.22)!important;border:0!important;color:#fff!important}
+.btn-secondary{background:#fff!important;color:var(--mc-navy)!important;border:1px solid #cbd9eb!important;margin-top:10px}
+.muted{color:var(--mc-muted)!important;line-height:1.5}
+.auth-card>p.muted{text-align:center;margin-top:19px!important;font-size:14px}
+a{color:var(--mc-blue);font-weight:700;text-decoration:none}a:hover{text-decoration:underline}
+#form{position:relative}
+#form:after{content:"Secure registration • Your account details are protected";display:block;text-align:center;color:#8793a7;font-size:12px;margin-top:23px}
+@media(max-width:700px){.auth{padding:15px 10px 30px}.auth-card{padding:23px 16px!important;border-radius:20px!important}.grid-2{grid-template-columns:1fr}h2{font-size:26px!important}.brand span{font-size:18px!important}.subtitle{font-size:14px}.field{margin-bottom:14px!important}}
+</style>
+</head><body><main class="auth"><section class="auth-card"><div class="brand"><img src="../assets/logo.png" alt="MathCloud Tutorial logo"><span>MathCloud Tutorial</span></div><h2>Create your JAMB account</h2><p class="subtitle">Choose your intended university and course first. The required UTME combination is assigned automatically before account creation.</p><div id="notice" class="notice" hidden></div><form id="form" novalidate>
+<div class="grid grid-2">
+<div class="field"><label for="institutionType">Institution type</label><select id="institutionType" required>
+<option value="">Select institution type</option>
+<option value="university">University</option>
+<option value="polytechnic">Polytechnic / Monotechnic</option>
+<option value="college">College / Other JAMB tertiary institution</option>
+</select></div>
+<div class="field"><label for="institutionCategory">Institution category</label><select id="institutionCategory" required disabled>
+<option value="">Select category</option>
+</select></div>
+</div>
+<div class="grid grid-2">
+<div class="field"><label for="institution">Intended institution</label><select id="institution" required disabled>
+<option value="">Select institution type first</option>
+</select></div>
+<div class="field"><label for="course">Intended course / programme</label><select id="course" required disabled>
+<option value="">Select institution first</option>
+</select></div>
+</div>
+<div class="field"><label for="institutionSearch">Search institution</label><input id="institutionSearch" type="search" placeholder="Type part of an institution name" autocomplete="off" disabled></div>
+<div class="field" id="manualInstitutionWrap" hidden><label for="manualInstitution">Institution not listed — type it manually</label><input id="manualInstitution" placeholder="Enter your institution"></div>
+<section class="card" style="margin:15px 0;padding:15px"><div class="muted">Automatically assigned UTME subjects</div><div id="assignedSubjects" style="margin-top:10px"></div><small class="muted">Use of English is compulsory. The displayed combination is based on this platform's catalogue and should be verified with JAMB IBASS for the selected institution/programme.</small></section>
+<div class="grid grid-2"><div class="field"><label for="firstName">First name</label><input id="firstName" required autocomplete="given-name"></div><div class="field"><label for="surname">Surname</label><input id="surname" required autocomplete="family-name"></div></div><div class="field"><label for="email">Email</label><input id="email" type="email" required autocomplete="email"></div><div class="grid grid-2"><div class="field"><label for="phone">Phone number</label><input id="phone" type="tel" required autocomplete="tel"></div><div class="field"><label for="state">State</label><input id="state" required></div></div>
+<div class="grid grid-2"><div class="field"><label for="password">Password</label><input id="password" type="password" minlength="8" required autocomplete="new-password"></div><div class="field"><label for="confirm">Confirm password</label><input id="confirm" type="password" minlength="8" required autocomplete="new-password"></div></div>
+<button class="btn btn-primary btn-block" id="createBtn">Create account</button><button type="button" class="btn btn-secondary btn-block" id="googleRegister">Continue with Google</button></form><p class="muted">Already registered? <a href="index.html">Sign in</a></p><p class="muted"><a href="https://eligibility.jamb.gov.ng/" target="_blank" rel="noopener">Verify course eligibility on official JAMB IBASS ↗</a></p></section></main><script src="../shared/app-config.js"></script><script src="../shared/firebase-config.js"></script><script src="../shared/app.js"></script><script>
+const institutionType=$("#institutionType"),institutionCategory=$("#institutionCategory"),institutionSelect=$("#institution"),institutionSearch=$("#institutionSearch"),courseSelect=$("#course"),manualWrap=$("#manualInstitutionWrap"),manualInput=$("#manualInstitution"),assigned=$("#assignedSubjects");
+
+const INSTITUTION_GROUPS={
+  university:{
+    Federal:[
+      "Ahmadu Bello University (ABU)","Bayero University Kano (BUK)","Federal University of Technology Akure (FUTA)","Federal University of Technology Minna (FUTMINNA)","Federal University of Technology Owerri (FUTO)","Federal University of Agriculture Abeokuta (FUNAAB)","Federal University of Agriculture Makurdi (FUAM)","Federal University of Agriculture Zuru (FUAZ)","Federal University of Health Sciences Azare (FUTHA)","Federal University of Health Sciences Ila Orangun (FUHSI)","Federal University of Health Sciences Katsina (FUKHA)","Federal University Dutse (FUD)","Federal University Dutsin-Ma (FUDMA)","Federal University Gashua (FUGASHUA)","Federal University Gusau (FUGUS)","Federal University Kashere (FUKASHERE)","Federal University Lafia (FULAFIA)","Federal University Lokoja (FULOKOJA)","Federal University Otuoke (FUOTUOKE)","Federal University Oye-Ekiti (FUOYE)","Federal University Birnin Kebbi (FUBK)","Federal University Wukari (FUWUKARI)","University of Abuja (UNIABUJA)","University of Benin (UNIBEN)","University of Calabar (UNICAL)","University of Ibadan (UI)","University of Ilorin (UNILORIN)","University of Jos (UNIJOS)","University of Lagos (UNILAG)","University of Maiduguri (UNIMAID)","University of Nigeria, Nsukka (UNN)","University of Port Harcourt (UNIPORT)","University of Uyo (UNIUYO)","Usmanu Danfodiyo University Sokoto (UDUS)","Nnamdi Azikiwe University (UNIZIK)","Obafemi Awolowo University (OAU)","University of Agriculture, Abeokuta (FUNAAB)","National Open University of Nigeria (NOUN)"
+    ],
+    State:[
+      "Abia State University (ABSU)","Adamawa State University (ADSU)","Adekunle Ajasin University (AAUA)","Ambrose Alli University (AAU)","Anambra State University (legacy/ASU)","Bauchi State University (BASUG)","Benue State University (BSU)","Delta State University (DELSU)","Ebonyi State University (EBSU)","Ekiti State University (EKSU)","Enugu State University of Science and Technology (ESUT)","Gombe State University (GSU)","Imo State University (IMSU)","Kaduna State University (KASU)","Kano University of Science and Technology (KUST)","Kebbi State University of Science and Technology (KSUSTA)","Kogi State University (KSU)","Kwara State University (KWASU)","Lagos State University (LASU)","Nasarawa State University (NSUK)","Niger Delta University (NDU)","Niger State University / Ibrahim Badamasi Babangida University (IBBU)","Oil and Gas University / University of Science and Technology (state options)","Osun State University (UNIOSUN)","Rivers State University (RSU)","Sokoto State University (SSU)","Tai Solarin University of Education (TASUED)","Taraba State University (TASU)","University of Maiduguri / state-linked options","Yobe State University (YSU)"
+    ],
+    Private:[
+      "Afe Babalola University (ABUAD)","Ajayi Crowther University (ACU)","Al-Hikmah University","American University of Nigeria (AUN)","Babcock University","Baze University","Bells University of Technology","Bingham University","Bowen University","Caleb University","Caritas University","Covenant University","Crawford University","Elizade University","Evangel University","Fountain University","Igbinedion University","Joseph Ayo Babalola University (JABU)","Kola Daisi University","Lead City University","Madonna University","McPherson University","Nile University of Nigeria","Novena University","Pan-Atlantic University","Redeemer's University","Renaissance University","Rhema University","Salem University","Samuel Adegboyega University","Veritas University","Wellspring University","Western Delta University"
+    ]
+  },
+  polytechnic:{
+    Federal:[
+      "Auchi Polytechnic","Federal Polytechnic Ado-Ekiti","Federal Polytechnic Bauchi","Federal Polytechnic Bida","Federal Polytechnic Damaturu","Federal Polytechnic Ede","Federal Polytechnic Ekowe","Federal Polytechnic Idah","Federal Polytechnic Ilaro","Federal Polytechnic Kaura Namoda","Federal Polytechnic Mubi","Federal Polytechnic Nasarawa","Federal Polytechnic Nekede","Federal Polytechnic Offa","Federal Polytechnic Oko","Federal Polytechnic Ukana","Federal Polytechnic Uwana","Federal Polytechnic Bali","Federal Polytechnic Daura","Federal Polytechnic Kaltungo","Federal Polytechnic Kazaure","Federal Polytechnic Monguno","Federal Polytechnic Ohodo","Federal Polytechnic Orogun","Federal Polytechnic Ugep","Yaba College of Technology (YABATECH)"
+    ],
+    State:[
+      "Abia State Polytechnic","Abraham Adesanya Polytechnic","Akwa Ibom State Polytechnic","Benue State Polytechnic","Delta State Polytechnic Ogwashi-Uku","Delta State Polytechnic Otefe-Oghara","Edo State Polytechnic","Gateway ICT Polytechnic","Imo State Polytechnic","Institute of Management and Technology (IMT), Enugu","Kogi State Polytechnic","Kwara State Polytechnic","Lagos State Polytechnic / Lagos State University of Science and Technology","Moshood Abiola Polytechnic","Nasarawa State Polytechnic","Oil and Gas Polytechnic Bonny","Osun State Polytechnic","Plateau State Polytechnic","Rivers State Polytechnic","Rufus Giwa Polytechnic","The Polytechnic Ibadan"
+    ],
+    Private:[
+      "Abraham Adesanya Polytechnic (private option)","Al-Hikmah Polytechnic","Covenant Polytechnic","Federal Polytechnic Nekede-affiliated/private options","Grace Polytechnic","Igbajo Polytechnic","Lagos City Polytechnic","Lens Polytechnic","Nigerian British University / polytechnic options","Redeemers College / polytechnic options"
+    ]
+  },
+  college:{
+    Federal:[
+      "Federal College of Education (Technical), Akoka","Federal College of Education (Technical), Gombe","Federal College of Education (Technical), Gusau","Federal College of Education (Technical), Omoku","Federal College of Education (Technical), Potiskum","Federal College of Education (Technical), Umunze","Federal College of Education, Abeokuta","Federal College of Education, Kano","Federal College of Education, Kontagora","Federal College of Education, Okene","Federal College of Education, Pankshin","Federal College of Education, Zaria"
+    ],
+    State:[
+      "Adeniran Ogunsanya College of Education","Adeyemi College of Education","Alvan Ikoku Federal College of Education","College of Education Akwanga","College of Education Agbor","College of Education Ekiadolor","College of Education Gindiri","College of Education Ikere-Ekiti","College of Education Ilemona","College of Education Katsina-Ala","College of Education Minna","College of Education Oro","College of Education Waka-Biu","Isa Kaita College of Education","Kwara State College of Education","Nasarawa State College of Education","Tai Solarin College of Education","Yobe State College of Education"
+    ],
+    Private:[
+      "Best Solution Polytechnic / College options","College of Nursing Sciences and other JAMB-approved colleges","Oil and Gas / Maritime / Health colleges approved for the relevant admission route"
+    ]
+  }
+};
+
+const EXTRA_COURSES=[
+ ["Actuarial Science",["english","mathematics","economics","government"]],
+ ["Agricultural Economics",["english","chemistry","biology","agriculture"]],
+ ["Agricultural Engineering",["english","mathematics","physics","chemistry"]],
+ ["Animal Science",["english","chemistry","biology","agriculture"]],
+ ["Architecture",["english","mathematics","physics","chemistry"]],
+ ["Banking and Finance",["english","mathematics","economics","commerce"]],
+ ["Biotechnology",["english","physics","chemistry","biology"]],
+ ["Building Technology",["english","mathematics","physics","chemistry"]],
+ ["Chemical Engineering",["english","mathematics","physics","chemistry"]],
+ ["Civil Engineering",["english","mathematics","physics","chemistry"]],
+ ["Computer Engineering",["english","mathematics","physics","chemistry"]],
+ ["Computer Science",["english","mathematics","physics","chemistry"]],
+ ["Criminology and Security Studies",["english","government","economics","history"]],
+ ["Dentistry",["english","physics","chemistry","biology"]],
+ ["Economics",["english","mathematics","economics","government"]],
+ ["Education",["english","government","economics","literature"]],
+ ["Electrical / Electronic Engineering",["english","mathematics","physics","chemistry"]],
+ ["Estate Management",["english","mathematics","economics","geography"]],
+ ["Environmental Engineering",["english","mathematics","physics","chemistry"]],
+ ["Environmental Management",["english","geography","economics","government"]],
+ ["Estate Surveying and Valuation",["english","mathematics","economics","geography"]],
+ ["Food Science and Technology",["english","chemistry","biology","physics"]],
+ ["Forestry and Wildlife",["english","biology","agriculture","chemistry"]],
+ ["French",["english","french","literature","government"]],
+ ["Geography",["english","geography","economics","government"]],
+ ["Geology",["english","mathematics","physics","chemistry"]],
+ ["Guidance and Counselling",["english","government","economics","biology"]],
+ ["Health Education",["english","biology","chemistry","physics"]],
+ ["History and International Studies",["english","history","government","literature"]],
+ ["Hospitality Management",["english","economics","biology","chemistry"]],
+ ["Human Anatomy",["english","physics","chemistry","biology"]],
+ ["Human Nutrition and Dietetics",["english","physics","chemistry","biology"]],
+ ["Industrial Chemistry",["english","mathematics","physics","chemistry"]],
+ ["Industrial Design",["english","mathematics","physics","chemistry"]],
+ ["Insurance",["english","mathematics","economics","commerce"]],
+ ["International Relations",["english","government","history","economics"]],
+ ["Journalism",["english","literature","government","economics"]],
+ ["Law",["english","literature","government","crs"]],
+ ["Library and Information Science",["english","literature","government","economics"]],
+ ["Linguistics",["english","literature","government","history"]],
+ ["Marketing",["english","mathematics","economics","commerce"]],
+ ["Mass Communication",["english","literature","government","economics"]],
+ ["Mathematics",["english","mathematics","physics","chemistry"]],
+ ["Mechanical Engineering",["english","mathematics","physics","chemistry"]],
+ ["Medical Laboratory Science",["english","physics","chemistry","biology"]],
+ ["Medicine and Surgery",["english","physics","chemistry","biology"]],
+ ["Microbiology",["english","physics","chemistry","biology"]],
+ ["Nursing Science",["english","physics","chemistry","biology"]],
+ ["Nutrition and Dietetics",["english","physics","chemistry","biology"]],
+ ["Pharmacy",["english","physics","chemistry","biology"]],
+ ["Philosophy",["english","government","history","literature"]],
+ ["Physiotherapy",["english","physics","chemistry","biology"]],
+ ["Political Science",["english","government","history","economics"]],
+ ["Quantity Surveying",["english","mathematics","physics","economics"]],
+ ["Radiography",["english","physics","chemistry","biology"]],
+ ["Public Administration",["english","government","economics","history"]],
+ ["Public Health",["english","biology","chemistry","physics"]],
+ ["Quantity Surveying",["english","mathematics","physics","economics"]],
+ ["Religious Studies",["english","crs","government","history"]],
+ ["Science Laboratory Technology",["english","mathematics","physics","chemistry"]],
+ ["Social Work",["english","government","economics","biology"]],
+ ["Sociology",["english","government","economics","history"]],
+ ["Software Engineering",["english","mathematics","physics","chemistry"]],
+ ["Statistics",["english","mathematics","physics","economics"]],
+ ["Surveying and Geoinformatics",["english","mathematics","physics","geography"]],
+ ["Teacher Education",["english","government","economics","literature"]],
+ ["Theatre and Film Studies",["english","literature","government","history"]],
+ ["Urban and Regional Planning",["english","mathematics","geography","economics"]],
+ ["Veterinary Medicine",["english","physics","chemistry","biology"]],
+ ["Zoology",["english","biology","chemistry","physics"]]
+];
+
+const COURSE_LABELS={english:"Use of English",mathematics:"Mathematics",physics:"Physics",chemistry:"Chemistry",biology:"Biology",economics:"Economics",government:"Government",literature:"Literature-in-English",history:"History",geography:"Geography",commerce:"Commerce",crs:"Christian Religious Studies",agriculture:"Agricultural Science",french:"French"};
+
+function allInstitutionEntries(){
+  const out=[];
+  Object.entries(INSTITUTION_GROUPS).forEach(([type,cats])=>Object.entries(cats).forEach(([category,names])=>names.forEach(name=>out.push({name,type,category}))));
+  return out.filter((v,i,a)=>a.findIndex(x=>x.name===v.name)===i).sort((a,b)=>a.name.localeCompare(b.name));
+}
+const REG_INSTITUTIONS=allInstitutionEntries();
+
+function mergedCoursesForInstitution(inst){
+  const existing=(typeof JAMB_COURSE_CATALOG!=="undefined"?JAMB_COURSE_CATALOG:[]).filter(c=>!inst||!inst.name||c.institutions.includes(inst.name));
+  const extras=EXTRA_COURSES.map(([name,subjects])=>({id:"extra-"+name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""),name,subjects,institutions:[]}));
+  const map=new Map();
+  existing.forEach(c=>map.set(c.id,c));
+  extras.forEach(c=>{if(!map.has(c.id))map.set(c.id,c);});
+  return [...map.values()].sort((a,b)=>a.name.localeCompare(b.name));
+}
+
+function fillCategories(){
+  const type=institutionType.value;
+  institutionCategory.disabled=!type;
+  institutionCategory.innerHTML='<option value="">Select category</option>'+((type&&INSTITUTION_GROUPS[type])?Object.keys(INSTITUTION_GROUPS[type]).map(x=>`<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join(''):'');
+  institutionSelect.disabled=true;institutionSearch.disabled=true;courseSelect.disabled=true;
+  institutionSelect.innerHTML='<option value="">Select category first</option>';courseSelect.innerHTML='<option value="">Select institution first</option>';
+  updateAssigned();
+}
+function fillInstitutions(){
+  const type=institutionType.value,cat=institutionCategory.value;
+  const list=REG_INSTITUTIONS.filter(x=>x.type===type&&(!cat||x.category===cat));
+  institutionSelect.disabled=!type||!cat;institutionSearch.disabled=!type||!cat;
+  institutionSelect.innerHTML='<option value="">Select institution</option>'+list.map(x=>`<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)}</option>`).join('')+'<option value="__manual__">My institution is not listed</option>';
+  courseSelect.disabled=true;courseSelect.innerHTML='<option value="">Select institution first</option>';updateAssigned();
+}
+function filterInstitutions(){
+  const q=institutionSearch.value.trim().toLowerCase(),type=institutionType.value,cat=institutionCategory.value;
+  const list=REG_INSTITUTIONS.filter(x=>x.type===type&&(!cat||x.category===cat)&&(!q||x.name.toLowerCase().includes(q)));
+  institutionSelect.innerHTML='<option value="">Select institution</option>'+list.map(x=>`<option value="${escapeHtml(x.name)}">${escapeHtml(x.name)}</option>`).join('')+'<option value="__manual__">My institution is not listed</option>';
+}
+function fillCourses(){
+  const name=institutionSelect.value;
+  const inst=REG_INSTITUTIONS.find(x=>x.name===name)||null;
+  const list=mergedCoursesForInstitution(inst);
+  courseSelect.disabled=!name||name==='__manual__';
+  courseSelect.innerHTML='<option value="">Select course / programme</option>'+list.map(x=>`<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}</option>`).join('');
+  courseSelect.value='';updateAssigned();
+}
+function selectedCourse(){
+  const id=courseSelect.value;
+  const all=mergedCoursesForInstitution(REG_INSTITUTIONS.find(x=>x.name===institutionSelect.value)||null);
+  return all.find(x=>x.id===id)||null;
+}
+function updateAssigned(){
+  const c=selectedCourse();
+  assigned.innerHTML=c?c.subjects.map(x=>`<span class="subject-chip">${escapeHtml(COURSE_LABELS[x]||x)}</span>`).join(''):'<span class="muted">Select a course to see the required combination.</span>';
+}
+institutionType.onchange=fillCategories;
+institutionCategory.onchange=fillInstitutions;
+institutionSearch.oninput=filterInstitutions;
+institutionSelect.onchange=()=>{
+  const manual=institutionSelect.value==='__manual__';
+  manualWrap.hidden=!manual;
+  if(!manual)manualInput.value='';
+  fillCourses();
+};
+courseSelect.onchange=updateAssigned;
+fillCategories();
+
+function getRegistrationData(){
+  const c=selectedCourse();
+  const manual=institutionSelect.value==='__manual__';
+  const institution=manual?manualInput.value.trim():institutionSelect.value;
+  if(!institution||!c||!c.subjects?.length)throw new Error('course');
+  return{
+    institution,
+    institutionType:institutionType.value,
+    institutionCategory:institutionCategory.value,
+    course:c.name,
+    courseId:c.id,
+    subjects:c.subjects
+  };
+}
+$("#form").onsubmit=async e=>{e.preventDefault();try{const reg=getRegistrationData(),password=$("#password").value;if(password!==$("#confirm").value)throw new Error('password');if(password.length<8)throw new Error('short');const btn=$("#createBtn");btn.disabled=true;const email=$("#email").value.trim().toLowerCase(),cred=await auth.createUserWithEmailAndPassword(email,password),firstName=$("#firstName").value.trim(),surname=$("#surname").value.trim();await cred.user.updateProfile({displayName:`${firstName} ${surname}`});await cred.user.sendEmailVerification();await saveUserProfile(cred.user,{firstName,surname,phone:$("#phone").value.trim(),state:$("#state").value.trim(),...reg,subscription:{status:"pending",amount:MATHCLOUD_CONFIG.annualFee,durationDays:MATHCLOUD_CONFIG.subscriptionDays},createdAt:Date.now()});await auth.signOut();showNotice("Account created. Verify your email, then sign in.","success");$("#form").reset();updateAssigned();}catch(err){showNotice(err.message==='course'?"Select your institution and intended course first.":err.message==='password'?"The passwords do not match.":err.message==='short'?"Use a password of at least 8 characters.":err?.code==='auth/email-already-in-use'?"An account already exists with this email.":"We could not create the account. Please check your details and try again.","error")}finally{$("#createBtn").disabled=false}};
+$("#googleRegister").onclick=async()=>{try{const reg=getRegistrationData();localStorage.setItem('mathcloud_pending_registration',JSON.stringify(reg));const cred=await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()),parts=(cred.user.displayName||'Student').trim().split(/\s+/),snap=await db.ref(`users/${cred.user.uid}`).once('value'),existing=snap.val()||{};await saveUserProfile(cred.user,{provider:'google',firstName:existing.firstName||parts[0]||'Student',surname:existing.surname||parts.slice(1).join(' '),...(!existing.course?reg:{}),subscription:existing.subscription||{status:'pending',amount:MATHCLOUD_CONFIG.annualFee,durationDays:MATHCLOUD_CONFIG.subscriptionDays},createdAt:existing.createdAt||Date.now()});localStorage.removeItem('mathcloud_pending_registration');location.replace('dashboard.html')}catch(e){showNotice(e.message==='course'?"Select your institution and intended course first.":"Google registration could not be completed. Please try again.","error")}};
+</script></body></html>

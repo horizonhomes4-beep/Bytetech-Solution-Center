@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lessons by Topic — MathCloud JAMB</title>
+<link rel="stylesheet" href="../shared/styles.css">
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<style>
+/* MODERN TOPIC PAGE UI — presentation only; Firebase/application logic below is unchanged */
+:root{
+  --mc-navy:#101b35;--mc-blue:#1769e0;--mc-blue2:#2d8cff;--mc-purple:#7047d9;
+  --mc-gold:#e3ad24;--mc-red:#d83a45;--mc-text:#172033;--mc-muted:#66738a;
+  --mc-bg:#f4f7fc;--mc-border:#dfe7f3;--mc-card:#fff;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:linear-gradient(135deg,#f7faff 0%,#eef4ff 52%,#faf7ff 100%);
+  color:var(--mc-text);font-family:Inter,Poppins,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+.topbar{
+  position:sticky;top:0;z-index:50;background:rgba(16,27,53,.96);
+  backdrop-filter:blur(14px);box-shadow:0 8px 28px rgba(16,27,53,.16);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.topbar .brand{font-weight:800;letter-spacing:.1px}
+.topbar .brand img{width:40px;height:40px;object-fit:contain}
+.topnav{display:flex;align-items:center;gap:8px}
+.topnav a{
+  padding:10px 14px;border-radius:10px;color:#eaf1ff;text-decoration:none;font-weight:700;
+  transition:.2s ease
+}
+.topnav a:hover{background:rgba(255,255,255,.12);transform:translateY(-1px)}
+.container{max-width:1240px;margin:auto;padding:28px 20px 50px}
+.hero{
+  position:relative;overflow:hidden;padding:34px 34px;border:0;border-radius:24px;
+  background:linear-gradient(115deg,#123b83 0%,#1769e0 52%,#7047d9 100%);
+  box-shadow:0 20px 45px rgba(40,76,150,.2);color:#fff;
+}
+.hero:before,.hero:after{content:"";position:absolute;border-radius:50%;pointer-events:none}
+.hero:before{width:260px;height:260px;right:-80px;top:-150px;background:rgba(227,173,36,.20)}
+.hero:after{width:180px;height:180px;left:-100px;bottom:-130px;background:rgba(255,255,255,.08)}
+.hero h1{position:relative;z-index:1;margin:0 0 8px;font-size:clamp(28px,4vw,42px);letter-spacing:-.8px}
+.hero p{position:relative;z-index:1;max-width:720px;font-size:15px;line-height:1.65}
+#liveStatus{
+  margin-top:18px!important;border:1px solid var(--mc-border);border-left:5px solid var(--mc-blue);
+  border-radius:15px;background:#fff;box-shadow:0 8px 24px rgba(33,63,118,.07);
+  padding:15px 18px;font-weight:600
+}
+#liveStatus.success{border-left-color:#1b9b61}
+#liveStatus.warning{border-left-color:var(--mc-gold)}
+#liveStatus.error{border-left-color:var(--mc-red)}
+#subjects{gap:18px}
+#subjects .card-link{
+  min-height:185px;position:relative;overflow:hidden;display:flex;flex-direction:column;
+  justify-content:center;align-items:flex-start;text-align:left;padding:24px;
+  background:var(--mc-card);border:1px solid var(--mc-border);border-radius:20px;
+  box-shadow:0 9px 25px rgba(30,61,113,.07);transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease;
+  cursor:pointer
+}
+#subjects .card-link:before{
+  content:"";position:absolute;right:-30px;top:-35px;width:115px;height:115px;border-radius:50%;
+  background:rgba(23,105,224,.07)
+}
+#subjects .card-link:nth-child(3n+2):before{background:rgba(112,71,217,.08)}
+#subjects .card-link:nth-child(3n+3):before{background:rgba(227,173,36,.11)}
+#subjects .card-link:after{
+  content:"VIEW TOPICS  →";margin-top:18px;color:var(--mc-blue);font-size:11px;font-weight:900;
+  letter-spacing:.09em
+}
+#subjects .card-link:hover{transform:translateY(-6px);box-shadow:0 18px 36px rgba(30,61,113,.13);border-color:#b9cae7}
+#subjects .card-link h3{position:relative;margin:0 0 8px;font-size:20px;color:#162f59}
+#subjects .card-link p{position:relative;margin:0;line-height:1.55;color:var(--mc-muted)}
+#topicsPanel{
+  margin-top:24px!important;background:rgba(255,255,255,.96);border:1px solid var(--mc-border);
+  border-radius:22px;padding:24px;box-shadow:0 20px 45px rgba(30,61,113,.11);
+  scroll-margin-top:90px;animation:panelIn .28s ease
+}
+#topicsPanel .toolbar{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+  padding-bottom:18px;border-bottom:1px solid #e8edf5
+}
+#selectedSubject{margin:0 0 5px;color:#123f87;font-size:25px}
+#topicsPanel .toolbar p{font-size:13px}
+#closeTopics{min-width:100px;border-radius:11px}
+#topics{
+  gap:16px!important
+}
+#topics .card-link{
+  min-height:220px;display:flex;flex-direction:column;padding:19px;
+  background:linear-gradient(145deg,#fff 0%,#f8fbff 100%);
+  border:1px solid var(--mc-border);border-left:5px solid var(--mc-purple);
+  border-radius:17px;box-shadow:0 7px 20px rgba(30,61,113,.055);
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease
+}
+#topics .card-link:nth-child(3n+2){border-left-color:var(--mc-blue)}
+#topics .card-link:nth-child(3n+3){border-left-color:var(--mc-gold)}
+#topics .card-link:hover{transform:translateY(-4px);box-shadow:0 15px 30px rgba(30,61,113,.11);border-color:#c1cfe4}
+#topics .card-link h3{margin:0 0 10px;color:#162f59;font-size:17px;line-height:1.4}
+#topics .card-link>p{margin:0 0 16px;color:var(--mc-muted);font-size:13px}
+.topic-actions{display:flex;gap:8px;flex-wrap:wrap}
+.topic-actions .btn{flex:1;min-width:105px;border-radius:10px;font-size:12px;font-weight:800}
+.topic-actions [data-wa-1on1],.topic-actions [data-wa-video]{background:#fff;border:1px solid #d7e1ef;color:#30435f}
+.topic-actions [data-wa-1on1]:hover,.topic-actions [data-wa-video]:hover{border-color:#aebfd8;background:#f5f8fd}
+@keyframes panelIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@media(max-width:850px){
+  .container{padding:20px 14px 40px}
+  .hero{padding:27px 22px;border-radius:19px}
+  #subjects{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #topics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .topbar{position:relative}
+  .topbar .brand span{font-size:13px}
+  .topbar .brand img{width:34px;height:34px}
+  .topnav a{padding:8px 9px;font-size:12px}
+  .hero h1{font-size:29px}
+  #subjects,#topics{grid-template-columns:1fr}
+  #subjects .card-link{min-height:145px;padding:20px}
+  #topics .card-link{min-height:0}
+  #topicsPanel{padding:18px}
+  #topicsPanel .toolbar{align-items:flex-start}
+  #selectedSubject{font-size:21px}
+  #closeTopics{min-width:80px}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><img src="../assets/logo.png" alt="MathCloud Tutorial logo"><span>MathCloud JAMB · Lessons</span></div>
+  <div class="topnav"><a href="dashboard.html">Dashboard</a><a href="results.html">Results</a></div>
+</header>
+<main class="container">
+  <div id="notice" class="notice" hidden></div>
+  <section class="hero">
+    <h1>Lessons by Topic</h1>
+    <p class="muted" style="margin-bottom:0;color:#e8efff">Live subjects, topics, lessons and practice content are loaded directly from Firebase.</p>
+  </section>
+  <div id="liveStatus" class="notice info" style="margin-top:16px">Connecting to the live content library…</div>
+  <div id="subjects" class="grid grid-3" style="margin-top:20px"></div>
+  <section id="topicsPanel" class="card" style="margin-top:20px" hidden>
+    <div class="toolbar">
+      <div><h2 id="selectedSubject" class="section-title"></h2><p class="muted" style="margin:0">Live topics available in Firebase</p></div>
+      <button class="btn btn-secondary" id="closeTopics">Close</button>
+    </div>
+    <div id="topics" class="grid grid-3" style="margin-top:16px"></div>
+  </section>
+</main>
+<script src="../shared/app-config.js"></script>
+<script src="../shared/firebase-config.js"></script>
+<script src="../shared/app.js"></script>
+<script>
+let liveSubjects={},liveLessons={},liveIndex={},currentUserData=null,currentUser=null,selectedSubjectId=null,subjectListeners=[];
+async function quickLessonRequest(type,subjectId,subjectName,topicName){
+  if(!currentUser)return;
+  const name=`${currentUserData?.firstName||""} ${currentUserData?.surname||""}`.trim(),email=currentUser.email||"";
+  try{await submitLessonRequest(currentUser.uid,{type,subject:subjectId,subjectName,topic:topicName,name,email})}catch(e){console.warn("Lesson request could not be saved",e)}
+  openWhatsApp(whatsappLessonRequestLink({type,name,email,subject:subjectName,topic:topicName}));
+}
+function topicEntries(subject){const raw=subject?.topics||{};if(Array.isArray(raw))return raw.map((x,i)=>{if(typeof x==="string")return [topicKey(x)||String(i),x];const id=String(x?.id||x?.topicId||topicKey(x?.name||x?.topic||x?.title)||i);return [id,String(x?.name||x?.topic||x?.title||id)]});return Object.entries(raw).map(([id,x])=>[id,typeof x==="string"?x:String(x?.name||x?.topic||x?.title||id)])}
+function lessonFor(subjectId,topicId,topicName){const bag=liveLessons?.[subjectId]||{};return bag[topicId]||bag[topicKey(topicId)]||bag[topicKey(topicName)]||Object.values(bag).find(l=>l&&(String(l.topicId||l.topic_id||"")===String(topicId)||String(l.id||"")===String(topicId)||topicKey(l.topic)===topicKey(topicName)||topicKey(l.topicName)===topicKey(topicName)||topicKey(l.title)===topicKey(topicName)))||null}
+function questionCount(sid,tid,tname){
+  const topics=liveIndex?.[sid]?.topics||{};
+  const direct=topics?.[tid]?.questionCount;
+  if(Number.isFinite(Number(direct)))return Number(direct);
+  const key=topicKey(tid),nameKey=topicKey(tname);
+  const found=Object.entries(topics).find(([id,v])=>topicKey(id)===key||topicKey(v?.name)===nameKey);
+  return Number(found?.[1]?.questionCount||0);
+}
+function renderSubjects(){const entries=Object.entries(liveSubjects||{}).filter(([id,s])=>s&&typeof s==="object"&&topicEntries(s).some(([tid,name])=>lessonFor(id,tid,name)||questionCount(id,tid,name)>0)).sort((a,b)=>String(a[1]?.name||a[0]).localeCompare(String(b[1]?.name||b[0])));$("#subjects").innerHTML=entries.map(([id,s])=>{const topics=topicEntries(s).filter(([tid,name])=>lessonFor(id,tid,name)||questionCount(id,tid,name)>0);const lessonCount=topics.filter(([tid,name])=>!!lessonFor(id,tid,name)).length;const qCount=topics.reduce((n,[tid,name])=>n+questionCount(id,tid,name),0);return `<button class="card card-link" type="button" data-subject="${escapeHtml(id)}"><h3>${escapeHtml(s.name||id)}</h3><p class="muted">${topics.length} live topic${topics.length===1?"":"s"} · ${lessonCount} lesson${lessonCount===1?"":"s"} · ${qCount} question${qCount===1?"":"s"}</p></button>`}).join("")||`<div class="card"><p class="muted">No subjects with live learning content are currently available in Firebase.</p></div>`;$$('[data-subject]').forEach(b=>b.onclick=()=>openSubject(b.dataset.subject))}
+function openSubject(id){selectedSubjectId=id;const s=liveSubjects[id]||{};const topics=topicEntries(s).filter(([tid,name])=>lessonFor(id,tid,name)||questionCount(id,tid,name)>0);$("#selectedSubject").textContent=s.name||id;$("#topicsPanel").hidden=false;$("#topics").innerHTML=topics.map(([tid,name])=>{const lesson=lessonFor(id,tid,name),qCount=questionCount(id,tid,name);const label=lesson&&qCount?`${qCount} questions + lesson available`:lesson?"Lesson available":`${qCount} questions available`;return `<div class="card card-link"><h3>${escapeHtml(name)}</h3><p class="muted">${label}</p><div class="actions topic-actions"><a class="btn btn-secondary" href="lesson.html?subject=${encodeURIComponent(id)}&topicId=${encodeURIComponent(tid)}&topic=${encodeURIComponent(name)}">Lesson</a><a class="btn btn-primary" href="practice.html?subject=${encodeURIComponent(id)}&topicId=${encodeURIComponent(tid)}&topic=${encodeURIComponent(name)}">Practice</a></div><div class="actions topic-actions" style="margin-top:6px"><button type="button" class="btn btn-secondary" data-wa-1on1="${escapeHtml(id)}" data-wa-topic="${escapeHtml(name)}" data-wa-subject="${escapeHtml(s.name||id)}">📞 1-on-1</button><button type="button" class="btn btn-secondary" data-wa-video="${escapeHtml(id)}" data-wa-topic="${escapeHtml(name)}" data-wa-subject="${escapeHtml(s.name||id)}">🎥 Video</button></div></div>`}).join("")||`<div class="card"><p class="muted">No live lesson or question content is currently available for this subject.</p></div>`;
+  $$("[data-wa-1on1]",$("#topics")).forEach(b=>b.onclick=()=>quickLessonRequest("one-on-one",b.getAttribute("data-wa-1on1"),b.dataset.waSubject,b.dataset.waTopic));
+  $$("[data-wa-video]",$("#topics")).forEach(b=>b.onclick=()=>quickLessonRequest("video",b.getAttribute("data-wa-video"),b.dataset.waSubject,b.dataset.waTopic));
+  requestAnimationFrame(()=>{const panel=document.getElementById("topicsPanel");panel.scrollIntoView({behavior:"smooth",block:"start"});panel.classList.remove("subject-focus");void panel.offsetWidth;panel.classList.add("subject-focus");});
+}
+async function startLiveContent(){
+  subjectListeners.forEach(x=>{try{x.off()}catch(e){}});
+  subjectListeners=[];liveSubjects={};liveLessons={};liveIndex={};
+  const assigned=getStudentSubjects(currentUserData);
+  if(!assigned.length){
+    $("#liveStatus").textContent="No subjects are currently assigned to your account. Please request a course/subject update from MathCloud Tutorial.";
+    $("#liveStatus").className="notice warning";renderSubjects();return;
+  }
+  try{
+    const [subjectSnaps,indexSnaps]=await Promise.all([
+      Promise.all(assigned.map(id=>mcRead(`subjects/${id}`,{ttl:120000}))),
+      Promise.all(assigned.map(id=>mcRead(`contentIndex/${id}`,{ttl:120000})))
+    ]);
+    assigned.forEach((id,i)=>{if(subjectSnaps[i])liveSubjects[id]=subjectSnaps[i];if(indexSnaps[i])liveIndex[id]=indexSnaps[i]});
+    renderSubjects();
+    await Promise.all(assigned.map(async sid=>{liveLessons[sid]=(await mcRead(`lessons/${sid}`,{ttl:120000}))||{}}));
+    renderSubjects();
+    if(selectedSubjectId)openSubject(selectedSubjectId);
+    $("#liveStatus").textContent="Your assigned subjects are ready. Topic counts load quickly from the content index; questions load only when you start practice.";
+    $("#liveStatus").className="notice success";
+  }catch(e){
+    console.error(e);
+    $("#liveStatus").textContent="Unable to load your registered subjects. Please contact MathCloud Tutorial.";
+    $("#liveStatus").className="notice error";
+  }
+}
+requireStudentAuth(async(user,data)=>{currentUser=user;currentUserData=data;if(!subscriptionActive(data)){showNotice("Your subscription is not active yet.","warning");return}startLiveContent()});
+$("#closeTopics").onclick=()=>{$("#topicsPanel").hidden=true;document.getElementById("subjects").scrollIntoView({behavior:"smooth",block:"start"});};
+</script>
+</body>
+</html>

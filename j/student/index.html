@@ -1,0 +1,1436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#075fe5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MathCloud">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
+<meta name="description" content="MathCloud Tutorial — structured JAMB self-tutoring, topic practice, CBT mocks, results and progress tracking.">
+<title>MathCloud Tutorial | JAMB Preparation</title>
+<link rel="preconnect" href="https://www.gstatic.com">
+<link rel="stylesheet" href="../shared/styles.css">
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+<style>
+/* =========================================================
+   MATHCLOUD FLYER-STYLE LANDING PAGE
+   Visual/UI changes only. Firebase/auth logic is unchanged.
+   ========================================================= */
+:root{
+  --mc-blue:#075fe5;
+  --mc-blue-dark:#063b9d;
+  --mc-blue-deep:#032b7d;
+  --mc-cyan:#00a8ff;
+  --mc-yellow:#ffe600;
+  --mc-green:#10a96b;
+  --mc-purple:#7146e8;
+  --mc-pink:#ec2877;
+  --mc-orange:#ff9f00;
+  --mc-teal:#0bb4a8;
+  --mc-ink:#092d67;
+  --mc-text:#173b6e;
+  --mc-muted:#60789a;
+  --mc-white:#fff;
+  --mc-line:#dce9f7;
+  --mc-soft:#f4f9ff;
+  --mc-shadow:0 18px 45px rgba(9,57,126,.13);
+  --mc-radius:24px;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body.mc-home{
+  margin:0;
+  min-height:100vh;
+  background:#fff;
+  color:var(--mc-text);
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+  overflow-x:hidden;
+}
+.mc-home a{text-decoration:none}
+.mc-home button,.mc-home input{font:inherit}
+
+/* Top navigation */
+.mc-nav{
+  position:sticky;
+  top:0;
+  z-index:100;
+  background:rgba(255,255,255,.95);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid #e4eef9;
+  box-shadow:0 4px 20px rgba(8,65,145,.07);
+}
+.mc-nav-inner{
+  width:min(1220px,calc(100% - 32px));
+  min-height:72px;
+  margin:auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+}
+.mc-brand{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  font-weight:950;
+  color:var(--mc-blue-dark);
+  letter-spacing:-.4px;
+}
+.mc-brand img{width:49px;height:49px;object-fit:contain}
+.mc-brand-text{display:flex;flex-direction:column;line-height:1}
+.mc-brand-text strong{font-size:22px}
+.mc-brand-text span{
+  margin-top:5px;
+  color:var(--mc-blue-dark);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:3px;
+}
+.mc-navlinks{display:flex;align-items:center;gap:24px}
+.mc-navlinks a{
+  color:#355579;
+  font-weight:800;
+  font-size:14px;
+  transition:.2s ease;
+}
+.mc-navlinks a:hover{color:var(--mc-blue)}
+.mc-nav-actions{display:flex;gap:9px;align-items:center}
+.mc-mobile-menu{display:none}
+
+/* Shared buttons */
+.mc-home .btn{
+  border:0;
+  cursor:pointer;
+  border-radius:12px;
+  min-height:45px;
+  padding:11px 20px;
+  font-weight:900;
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.mc-home .btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 9px 20px rgba(0,75,190,.18);
+}
+.mc-home .btn-primary{
+  background:linear-gradient(135deg,#0768ee,#0344b8);
+  color:#fff;
+}
+.mc-home .btn-secondary{
+  background:#fff;
+  color:var(--mc-blue-dark);
+  border:1px solid #cfe0f5;
+}
+.mc-home .btn-gold{
+  background:linear-gradient(135deg,#ffe900,#ffc400);
+  color:#083779;
+}
+.mc-home .btn-block{width:100%}
+
+/* Hero */
+.mc-hero-wrap{
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 84% 14%,rgba(255,255,255,.9) 0 3%,transparent 18%),
+    linear-gradient(180deg,#eef8ff 0%,#fff 75%);
+}
+.mc-hero-wrap:before{
+  content:"";
+  position:absolute;
+  width:620px;
+  height:620px;
+  border-radius:50%;
+  right:-300px;
+  top:-300px;
+  background:rgba(7,104,238,.08);
+}
+.mc-hero{
+  width:min(1220px,calc(100% - 32px));
+  margin:auto;
+  padding:54px 0 62px;
+  display:grid;
+  grid-template-columns:minmax(0,1.08fr) minmax(380px,.92fr);
+  gap:42px;
+  align-items:center;
+  position:relative;
+  z-index:1;
+}
+.mc-hero-copy{position:relative;z-index:2}
+.mc-mini-brand{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 13px;
+  border-radius:999px;
+  background:#e6f2ff;
+  color:var(--mc-blue);
+  font-size:12px;
+  font-weight:950;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+}
+.mc-mini-brand:before{
+  content:"✓";
+  width:19px;height:19px;
+  display:grid;place-items:center;
+  border-radius:50%;
+  background:var(--mc-blue);
+  color:#fff;
+}
+.mc-hero h1{
+  margin:17px 0 11px;
+  color:#0b3577;
+  font-size:clamp(42px,6vw,76px);
+  line-height:.96;
+  letter-spacing:-3.2px;
+  font-weight:950;
+}
+.mc-hero h1 .yellow{
+  color:#f0d900;
+  text-shadow:0 2px 0 rgba(185,157,0,.12);
+}
+.mc-hero-lead{
+  max-width:700px;
+  margin:0;
+  font-size:18px;
+  line-height:1.62;
+  color:#426486;
+}
+.mc-highlight{
+  margin-top:24px;
+  display:inline-block;
+  position:relative;
+  padding:11px 22px 12px;
+  color:#073c8d;
+  font-size:23px;
+  font-weight:950;
+  font-style:italic;
+  transform:rotate(-1.5deg);
+}
+.mc-highlight:before{
+  content:"";
+  position:absolute;
+  inset:0 -12px;
+  z-index:-1;
+  background:#ffe100;
+  border-radius:50% 44% 48% 55%;
+  transform:skewX(-10deg);
+}
+.mc-hero-actions{display:flex;flex-wrap:wrap;gap:11px;margin-top:23px}
+
+/* Flyer-like hero card */
+.mc-hero-panel{
+  position:relative;
+  min-height:440px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.mc-device-stack{
+  width:min(100%,530px);
+  position:relative;
+  padding:20px 12px 34px 32px;
+}
+.mc-laptop{
+  position:relative;
+  background:#f9fcff;
+  border:8px solid #183c68;
+  border-radius:18px;
+  box-shadow:0 28px 55px rgba(6,47,111,.25);
+  overflow:hidden;
+}
+.mc-laptop-screen{
+  min-height:330px;
+  background:#f4f9ff;
+  padding:0;
+}
+.mc-browser-bar{
+  height:34px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:0 12px;
+  background:#fff;
+  border-bottom:1px solid #dbe7f4;
+}
+.mc-dot{width:8px;height:8px;border-radius:50%;background:#b6c6d8}
+.mc-app-screen{display:grid;grid-template-columns:112px 1fr;min-height:295px}
+.mc-side{
+  background:#073c8d;
+  color:#fff;
+  padding:18px 9px;
+}
+.mc-side-logo{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  font-size:10px;
+  font-weight:900;
+  margin-bottom:20px;
+}
+.mc-side-logo img{width:24px;height:24px}
+.mc-side-item{
+  padding:9px 6px;
+  margin:3px 0;
+  border-radius:7px;
+  font-size:10px;
+  font-weight:800;
+  color:#d9ebff;
+}
+.mc-side-item.active{background:#176ce8;color:#fff}
+.mc-dashboard{
+  padding:17px;
+  background:#f6faff;
+}
+.mc-dashboard-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:13px;
+}
+.mc-dashboard h3{
+  margin:0;
+  color:#0c397b;
+  font-size:17px;
+}
+.mc-online{
+  padding:5px 8px;
+  border-radius:999px;
+  background:#e0f8ed;
+  color:#078354;
+  font-size:8px;
+  font-weight:900;
+}
+.mc-subject-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:9px;
+}
+.mc-subject{
+  min-height:84px;
+  border-radius:11px;
+  padding:10px 7px;
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  box-shadow:0 7px 12px rgba(0,0,0,.07);
+}
+.mc-subject strong{font-size:21px}
+.mc-subject span{font-size:9px;font-weight:900}
+.mc-s1{background:#0877e8}.mc-s2{background:#7041dc}.mc-s3{background:#09a26b}
+.mc-s4{background:#ff9f00}.mc-s5{background:#e92c7d}.mc-s6{background:#0da9a2}
+.mc-laptop-base{
+  width:112%;
+  height:18px;
+  margin-left:-6%;
+  border-radius:0 0 30px 30px;
+  background:linear-gradient(#8da2bb,#d8e2ed);
+  box-shadow:0 8px 12px rgba(4,47,104,.2);
+}
+.mc-phone{
+  position:absolute;
+  left:0;
+  bottom:8px;
+  width:145px;
+  height:270px;
+  border:6px solid #122e52;
+  border-radius:24px;
+  background:#f8fbff;
+  box-shadow:0 18px 40px rgba(5,51,120,.27);
+  overflow:hidden;
+  z-index:4;
+}
+.mc-phone-notch{
+  height:16px;
+  width:58px;
+  margin:auto;
+  background:#122e52;
+  border-radius:0 0 12px 12px;
+}
+.mc-phone-inner{padding:10px}
+.mc-phone-brand{display:flex;align-items:center;gap:5px;font-size:7px;font-weight:950;color:#0a3d86}
+.mc-phone-brand img{width:19px;height:19px}
+.mc-phone-title{margin:12px 0 8px;font-size:11px;font-weight:950;color:#153f76}
+.mc-phone-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:5px}
+.mc-phone-card{
+  height:55px;border-radius:8px;color:#fff;padding:7px;
+  font-size:7px;font-weight:900;
+  display:flex;flex-direction:column;justify-content:space-between;
+}
+.mc-phone-card b{font-size:14px}
+.mc-phone-card:nth-child(1){background:#0877e8}
+.mc-phone-card:nth-child(2){background:#09a26b}
+.mc-phone-card:nth-child(3){background:#7041dc}
+.mc-phone-card:nth-child(4){background:#ff9f00}
+.mc-phone-card:nth-child(5){background:#e92c7d}
+.mc-phone-card:nth-child(6){background:#0da9a2}
+.mc-yellow-bubble{
+  position:absolute;
+  right:-2px;
+  top:8px;
+  width:116px;
+  height:116px;
+  border-radius:50%;
+  background:#ffe100;
+  border:7px solid #fff;
+  box-shadow:0 12px 25px rgba(33,67,111,.15);
+  display:grid;
+  place-items:center;
+  text-align:center;
+  color:#073b88;
+  font-weight:950;
+  line-height:1.05;
+  transform:rotate(7deg);
+  z-index:5;
+}
+.mc-yellow-bubble span{font-size:12px}
+.mc-yellow-bubble strong{display:block;font-size:18px}
+
+/* Feature ribbon */
+.mc-ribbon{
+  background:linear-gradient(135deg,#064dbd,#0873ee);
+  color:#fff;
+  position:relative;
+  overflow:hidden;
+}
+.mc-ribbon:after{
+  content:"";
+  position:absolute;
+  width:260px;height:260px;
+  border-radius:50%;
+  right:-90px;top:-170px;
+  background:rgba(255,255,255,.12);
+}
+.mc-ribbon-inner{
+  width:min(1220px,calc(100% - 32px));
+  margin:auto;
+  min-height:92px;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  align-items:center;
+}
+.mc-ribbon-item{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  min-height:54px;
+  padding:10px 18px;
+  border-right:1px solid rgba(255,255,255,.28);
+  text-align:left;
+}
+.mc-ribbon-item:last-child{border-right:0}
+.mc-ribbon-icon{
+  width:43px;height:43px;border-radius:50%;
+  display:grid;place-items:center;
+  background:rgba(255,255,255,.16);
+  font-size:20px;
+  flex:0 0 auto;
+}
+.mc-ribbon-item strong{display:block;font-size:14px}
+.mc-ribbon-item span{display:block;margin-top:2px;font-size:11px;color:#dcecff}
+
+/* Main sections */
+.mc-section{
+  width:min(1220px,calc(100% - 32px));
+  margin:auto;
+  padding:66px 0;
+}
+.mc-section-heading{text-align:center;margin-bottom:32px}
+.mc-kicker{
+  display:inline-block;
+  color:var(--mc-blue);
+  font-size:12px;
+  font-weight:950;
+  letter-spacing:1.3px;
+  text-transform:uppercase;
+}
+.mc-section h2{
+  margin:7px 0 8px;
+  color:#0a387d;
+  font-size:clamp(29px,4vw,43px);
+  line-height:1.05;
+  letter-spacing:-1.5px;
+}
+.mc-section-lead{
+  max-width:760px;
+  margin:0 auto;
+  color:#607a9b;
+  line-height:1.7;
+}
+
+/* Feature cards */
+.mc-cards{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:17px;
+}
+.mc-info{
+  position:relative;
+  overflow:hidden;
+  min-height:240px;
+  background:#fff;
+  border:1px solid var(--mc-line);
+  border-radius:20px;
+  padding:24px 21px;
+  box-shadow:var(--mc-shadow);
+  transition:transform .2s ease,box-shadow .2s ease;
+}
+.mc-info:hover{transform:translateY(-5px);box-shadow:0 24px 50px rgba(9,57,126,.16)}
+.mc-info:after{
+  content:"";
+  position:absolute;
+  width:100px;height:100px;
+  border-radius:50%;
+  right:-48px;bottom:-48px;
+  background:#eef6ff;
+}
+.mc-info .icon{
+  width:55px;height:55px;
+  display:grid;place-items:center;
+  border-radius:16px;
+  background:#eaf3ff;
+  color:var(--mc-blue);
+  font-size:27px;
+}
+.mc-info:nth-child(2) .icon{background:#fff5cf;color:#dfad00}
+.mc-info:nth-child(3) .icon{background:#e9e0ff;color:#6942db}
+.mc-info:nth-child(4) .icon{background:#dff7ec;color:#07905e}
+.mc-info h3{margin:16px 0 8px;color:#123f7c;font-size:18px}
+.mc-info p{margin:0;color:#6a829e;line-height:1.65;font-size:14px}
+
+/* JAMB subjects */
+.mc-subject-section{
+  background:linear-gradient(180deg,#f3f9ff 0%,#fff 100%);
+}
+.mc-subject-content{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:28px;
+  align-items:stretch;
+}
+.mc-subject-box{
+  background:#fff;
+  border:1px solid #d9e8f7;
+  border-radius:24px;
+  padding:26px;
+  box-shadow:var(--mc-shadow);
+}
+.mc-subject-box h3{
+  margin:0 0 19px;
+  color:#0a397e;
+  font-size:20px;
+}
+.mc-subjects-large{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:11px;
+}
+.mc-large-subject{
+  min-height:105px;
+  border-radius:14px;
+  color:#fff;
+  padding:13px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  font-weight:900;
+}
+.mc-large-subject b{font-size:26px}
+.mc-large-subject span{font-size:11px}
+.mc-stat-list{margin:20px 0 0;padding:0;list-style:none}
+.mc-stat-list li{
+  display:flex;
+  align-items:flex-start;
+  gap:9px;
+  margin:10px 0;
+  color:#466582;
+  font-size:13px;
+  font-weight:750;
+}
+.mc-stat-list li:before{
+  content:"✓";
+  flex:0 0 auto;
+  width:19px;height:19px;
+  display:grid;place-items:center;
+  border-radius:50%;
+  background:#19aa6e;
+  color:#fff;
+  font-size:11px;
+  font-weight:950;
+}
+.mc-notation{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:13px;
+}
+.mc-notation-card{
+  border-radius:15px;
+  padding:17px;
+  min-height:180px;
+}
+.mc-notation-card.math{background:#edf6ff;border:1px solid #cde3fa}
+.mc-notation-card.chem{background:#e8faef;border:1px solid #bfead0}
+.mc-notation-card h4{margin:0 0 10px;color:#0b3d80}
+.mc-formula{
+  color:#173f71;
+  font-family:"Times New Roman",serif;
+  font-size:17px;
+  line-height:1.7;
+}
+
+/* How it works */
+.mc-steps{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:16px;
+  counter-reset:mcstep;
+}
+.mc-step{
+  position:relative;
+  background:#fff;
+  border:1px solid #dce9f7;
+  border-radius:20px;
+  padding:25px 21px;
+  box-shadow:0 12px 30px rgba(9,57,126,.07);
+}
+.mc-step:before{
+  counter-increment:mcstep;
+  content:counter(mcstep);
+  width:40px;height:40px;
+  display:grid;place-items:center;
+  border-radius:50%;
+  background:#0869e8;
+  color:#fff;
+  font-weight:950;
+  margin-bottom:17px;
+}
+.mc-step h3{margin:0 0 8px;color:#123f7c}
+.mc-step p{margin:0;color:#69809b;line-height:1.65;font-size:14px}
+
+/* CTA */
+.mc-cta-wrap{
+  padding-top:8px;
+}
+.mc-subscribe{
+  position:relative;
+  overflow:hidden;
+  border-radius:28px;
+  padding:43px 46px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:25px;
+  background:
+    radial-gradient(circle at 88% 30%,rgba(255,255,255,.17) 0 7%,transparent 8%),
+    linear-gradient(135deg,#043b94,#0876ee);
+  color:#fff;
+  box-shadow:0 25px 55px rgba(3,61,150,.22);
+}
+.mc-subscribe:after{
+  content:"";
+  position:absolute;
+  width:220px;height:220px;
+  border-radius:50%;
+  right:-100px;bottom:-130px;
+  border:35px solid rgba(255,255,255,.08);
+}
+.mc-subscribe h2{
+  color:#fff;
+  text-align:left;
+  margin:0 0 8px;
+}
+.mc-subscribe p{
+  margin:0;
+  max-width:760px;
+  color:#dcecff;
+  line-height:1.7;
+}
+
+/* FAQ */
+.mc-faq{max-width:900px;margin:auto}
+.mc-faq details{
+  background:#fff;
+  border:1px solid #dce8f6;
+  border-radius:15px;
+  padding:17px 20px;
+  margin:10px 0;
+  box-shadow:0 7px 18px rgba(9,57,126,.045);
+}
+.mc-faq summary{
+  color:#143f79;
+  font-weight:900;
+  cursor:pointer;
+}
+.mc-faq p{color:#6b819d;line-height:1.65}
+
+/* Footer */
+.mc-footer{
+  position:relative;
+  background:#052d78;
+  color:#d9eaff;
+  text-align:center;
+  padding:35px 20px;
+  overflow:hidden;
+}
+.mc-footer:before{
+  content:"";
+  position:absolute;
+  left:-5%;
+  top:-35px;
+  width:110%;
+  height:55px;
+  background:#fff;
+  border-radius:50%;
+}
+.mc-footer-content{position:relative;z-index:1;padding-top:8px}
+.mc-footer strong{color:#fff}
+.mc-footer small{display:block;margin-top:8px;color:#a9c5e7}
+
+/* Login card: retain existing form IDs/classes */
+.mc-login{
+  background:#fff;
+  border:1px solid #d9e7f6;
+  border-radius:25px;
+  padding:29px;
+  box-shadow:0 25px 65px rgba(5,48,112,.18);
+}
+.mc-login .brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:16px;
+  color:#0a397e;
+}
+.mc-login .brand img{width:48px;height:48px;object-fit:contain}
+.mc-login h2{margin:0 0 6px;color:#123f7c}
+.mc-login .muted{color:#6a809b}
+.mc-login .field{margin:13px 0}
+.mc-login label{display:block;color:#315578;font-size:13px;font-weight:850;margin-bottom:6px}
+.mc-login input{
+  width:100%;
+  height:47px;
+  border:1px solid #cfdfef;
+  border-radius:11px;
+  padding:0 13px;
+  outline:none;
+  background:#fbfdff;
+  color:#143d72;
+}
+.mc-login input:focus{
+  border-color:#4d95eb;
+  box-shadow:0 0 0 3px rgba(7,104,238,.11);
+}
+.mc-login .actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+  margin-top:10px;
+}
+.mc-login small{display:block;line-height:1.5;margin-top:13px}
+.mc-login a{color:#0768e8;font-weight:850}
+.mc-center-notice{top:50%!important}
+
+/* Responsive */
+@media(max-width:1050px){
+  .mc-navlinks{gap:13px}
+  .mc-hero{grid-template-columns:1fr;max-width:850px}
+  .mc-hero-copy{text-align:center}
+  .mc-hero-lead{margin:auto}
+  .mc-hero-actions{justify-content:center}
+  .mc-highlight{margin-left:auto;margin-right:auto}
+  .mc-hero-panel{max-width:620px;width:100%;margin:auto}
+  .mc-cards{grid-template-columns:repeat(2,1fr)}
+  .mc-steps{grid-template-columns:repeat(2,1fr)}
+  .mc-subject-content{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .mc-nav-inner{min-height:64px}
+  .mc-brand-text strong{font-size:18px}
+  .mc-brand img{width:42px;height:42px}
+  .mc-navlinks,.mc-nav-actions{display:none}
+  .mc-mobile-menu{display:block!important}
+  .mc-hero{padding-top:38px}
+  .mc-hero h1{font-size:clamp(40px,13vw,62px);letter-spacing:-2.2px}
+  .mc-hero-lead{font-size:16px}
+  .mc-hero-panel{min-height:350px}
+  .mc-device-stack{transform:scale(.86);transform-origin:center top;width:116%;margin-left:-8%}
+  .mc-ribbon-inner{grid-template-columns:repeat(2,1fr);padding:10px 0}
+  .mc-ribbon-item:nth-child(2){border-right:0}
+  .mc-ribbon-item:nth-child(-n+2){border-bottom:1px solid rgba(255,255,255,.2)}
+  .mc-ribbon-item{min-height:60px}
+  .mc-section{padding:48px 0}
+  .mc-cards,.mc-steps{grid-template-columns:1fr}
+  .mc-subjects-large{grid-template-columns:repeat(2,1fr)}
+  .mc-notation{grid-template-columns:1fr}
+  .mc-subscribe{grid-template-columns:1fr;padding:31px 25px}
+  .mc-subscribe .btn{justify-self:start}
+}
+@media(max-width:480px){
+  .mc-nav-inner,.mc-hero,.mc-section,.mc-ribbon-inner{width:min(100% - 22px,1220px)}
+  .mc-brand-text span{font-size:8px;letter-spacing:2px}
+  .mc-hero{padding-top:30px}
+  .mc-hero h1{font-size:42px}
+  .mc-highlight{font-size:19px}
+  .mc-hero-actions .btn{width:100%}
+  .mc-hero-panel{min-height:290px}
+  .mc-device-stack{transform:scale(.67);width:148%;margin-left:-24%}
+  .mc-yellow-bubble{right:2px}
+  .mc-ribbon-item{padding:9px 8px;gap:7px}
+  .mc-ribbon-icon{width:37px;height:37px;font-size:17px}
+  .mc-ribbon-item strong{font-size:12px}
+  .mc-ribbon-item span{font-size:9px}
+  .mc-subjects-large{grid-template-columns:1fr 1fr}
+  .mc-large-subject{min-height:90px}
+  .mc-login .actions{grid-template-columns:1fr}
+}
+
+
+/* =========================================================
+   MATHCLOUD PWA INSTALL UI
+   Android + iOS + tablets + desktop
+   ========================================================= */
+.mc-install-nav{display:none!important}
+.mc-install-guide{
+  position:fixed;inset:0;z-index:10000;display:none;align-items:flex-end;
+  justify-content:center;background:rgba(3,35,82,.48);backdrop-filter:blur(5px);
+  padding:14px;
+}
+.mc-install-guide.show{display:flex}
+.mc-install-card{
+  width:min(560px,100%);background:#fff;border-radius:24px 24px 16px 16px;
+  padding:24px;box-shadow:0 25px 80px rgba(3,35,82,.28);
+  animation:mcInstallUp .22s ease-out;
+}
+@keyframes mcInstallUp{from{transform:translateY(25px);opacity:0}to{transform:translateY(0);opacity:1}}
+.mc-install-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.mc-install-head h3{margin:0;color:#0a397e;font-size:22px}
+.mc-install-close{
+  border:0;background:#eef5ff;color:#174c91;width:38px;height:38px;
+  border-radius:50%;font-size:22px;cursor:pointer
+}
+.mc-install-card p{color:#58718f;line-height:1.6}
+.mc-install-steps{margin:15px 0 0;padding-left:24px;color:#294d73}
+.mc-install-steps li{margin:11px 0;line-height:1.55}
+.mc-install-tip{
+  margin-top:16px;padding:13px 15px;border-radius:13px;
+  background:#eef7ff;color:#174c91;font-size:13px;line-height:1.5
+}
+.mc-installed-badge{
+  display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:8px 12px;
+  border-radius:999px;background:#e6f8ef;color:#08734d;font-size:12px;font-weight:900
+}
+@media(max-width:760px){
+  .mc-mobile-menu{display:flex!important}
+  .mc-mobile-menu .mc-install-nav{display:block!important}
+  .mc-hero-actions #mcInstallBtn{display:flex;align-items:center;justify-content:center}
+}
+@media(min-width:761px){
+  .mc-install-nav{display:none!important}
+}
+
+/* Accessibility */
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .mc-home .btn,.mc-info{transition:none}
+}
+</style>
+</head>
+
+<body class="mc-home">
+
+<nav class="mc-nav">
+  <div class="mc-nav-inner">
+    <a class="mc-brand" href="#">
+      <img src="../assets/logo.png" alt="MathCloud Tutorial logo">
+      <span class="mc-brand-text">
+        <strong>MathCloud</strong>
+        <span>JAMB PREPARATION</span>
+      </span>
+    </a>
+
+    <div class="mc-navlinks">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#subjects">Subjects</a>
+      <a href="#subscribe">Subscription</a>
+      <a href="#faq">FAQ</a>
+    </div>
+
+    <div class="mc-nav-actions">
+      <a class="btn btn-secondary" href="#loginCard">Sign in</a>
+      <a class="btn btn-primary" href="register.html">Register</a>
+    </div>
+
+    <div class="mc-mobile-menu" style="display:none;gap:7px;align-items:center">
+      <button class="btn btn-secondary mc-install-nav" id="mcInstallNavBtn" type="button">📲 Install</button>
+      <button class="btn btn-primary" type="button"
+        onclick="document.getElementById('loginCard').scrollIntoView({behavior:'smooth'})">Sign in</button>
+    </div>
+  </div>
+</nav>
+
+<div class="mc-hero-wrap">
+  <section class="mc-hero">
+
+    <div class="mc-hero-copy">
+      <span class="mc-mini-brand">JAMB-focused • CBT practice • Progress tracking</span>
+
+      <h1>
+        The Smarter Way to<br>
+        <span class="yellow">Pass JAMB!</span>
+      </h1>
+
+      <p class="mc-hero-lead">
+        Get complete JAMB preparation with expert lessons, topic-based practice,
+        realistic exam simulation and detailed explanations — all in one powerful platform.
+      </p>
+
+      <div class="mc-highlight">Study Smarter. Score Higher!</div>
+
+      <div class="mc-hero-actions">
+        <a class="btn btn-primary" href="#loginCard">Start learning</a>
+        <a class="btn btn-secondary" href="#how">See how it works</a>
+      </div>
+    </div>
+
+    <div class="mc-hero-panel">
+      <div class="mc-device-stack">
+
+        <div class="mc-yellow-bubble">
+          <div>
+            <span>JAMB</span>
+            <strong>FOCUSED</strong>
+            <span>100% ONLINE</span>
+          </div>
+        </div>
+
+        <div class="mc-laptop">
+          <div class="mc-laptop-screen">
+            <div class="mc-browser-bar">
+              <span class="mc-dot"></span><span class="mc-dot"></span><span class="mc-dot"></span>
+            </div>
+
+            <div class="mc-app-screen">
+              <aside class="mc-side">
+                <div class="mc-side-logo">
+                  <img src="../assets/logo.png" alt="">
+                  <span>MathCloud</span>
+                </div>
+                <div class="mc-side-item active">⌂ Dashboard</div>
+                <div class="mc-side-item">◈ Practice</div>
+                <div class="mc-side-item">◉ Mock Exam</div>
+                <div class="mc-side-item">▤ Lessons</div>
+                <div class="mc-side-item">◫ Analytics</div>
+                <div class="mc-side-item">⚙ Settings</div>
+              </aside>
+
+              <div class="mc-dashboard">
+                <div class="mc-dashboard-top">
+                  <h3>JAMB Subjects</h3>
+                  <span class="mc-online">● LIVE</span>
+                </div>
+
+                <div class="mc-subject-grid">
+                  <div class="mc-subject mc-s1"><strong>√x</strong><span>Mathematics</span></div>
+                  <div class="mc-subject mc-s2"><strong>⚛</strong><span>Physics</span></div>
+                  <div class="mc-subject mc-s3"><strong>⚗</strong><span>Chemistry</span></div>
+                  <div class="mc-subject mc-s4"><strong>◒</strong><span>Biology</span></div>
+                  <div class="mc-subject mc-s5"><strong>▤</strong><span>English</span></div>
+                  <div class="mc-subject mc-s6"><strong>▧</strong><span>Use of English</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mc-laptop-base"></div>
+        </div>
+
+        <div class="mc-phone">
+          <div class="mc-phone-notch"></div>
+          <div class="mc-phone-inner">
+            <div class="mc-phone-brand">
+              <img src="../assets/logo.png" alt="">
+              <span>MathCloud</span>
+            </div>
+            <div class="mc-phone-title">Welcome Back, Student!</div>
+            <div class="mc-phone-grid">
+              <div class="mc-phone-card"><b>√x</b><span>Practice</span></div>
+              <div class="mc-phone-card"><b>⚗</b><span>Mock Exam</span></div>
+              <div class="mc-phone-card"><b>✦</b><span>Lessons</span></div>
+              <div class="mc-phone-card"><b>▥</b><span>Analytics</span></div>
+              <div class="mc-phone-card"><b>▤</b><span>Notes</span></div>
+              <div class="mc-phone-card"><b>⚙</b><span>Settings</span></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </section>
+</div>
+
+<div class="mc-ribbon">
+  <div class="mc-ribbon-inner">
+    <div class="mc-ribbon-item">
+      <div class="mc-ribbon-icon">✓</div>
+      <div><strong>Better Learning</strong><span>Structured JAMB preparation</span></div>
+    </div>
+    <div class="mc-ribbon-item">
+      <div class="mc-ribbon-icon">◫</div>
+      <div><strong>Higher Scores</strong><span>Practice and review</span></div>
+    </div>
+    <div class="mc-ribbon-item">
+      <div class="mc-ribbon-icon">🎓</div>
+      <div><strong>Real CBT Practice</strong><span>JAMB-style simulations</span></div>
+    </div>
+    <div class="mc-ribbon-item">
+      <div class="mc-ribbon-icon">★</div>
+      <div><strong>Brighter Future</strong><span>Build exam confidence</span></div>
+    </div>
+  </div>
+</div>
+
+<main>
+
+<section class="mc-section" id="features">
+  <div class="mc-section-heading">
+    <span class="mc-kicker">Powerful Features</span>
+    <h2>Everything You Need to Prepare</h2>
+    <p class="mc-section-lead">
+      Study at your own pace, practise from your assigned question bank,
+      take realistic CBT mocks and use your results to decide what to improve next.
+    </p>
+  </div>
+
+  <div class="mc-cards">
+    <article class="mc-info">
+      <div class="icon">📚</div>
+      <h3>Comprehensive JAMB Content</h3>
+      <p>Past questions, topic-based practice, full mocks and detailed explanations in one organized learning environment.</p>
+    </article>
+
+    <article class="mc-info">
+      <div class="icon">💡</div>
+      <h3>Expert Lessons &amp; Notes</h3>
+      <p>Step-by-step explanations with clear examples so difficult concepts become easier to understand and revise.</p>
+    </article>
+
+    <article class="mc-info">
+      <div class="icon">π</div>
+      <h3>Advanced Math &amp; Science Notation</h3>
+      <p>Beautiful, clear rendering of mathematical formulas and scientific notation for a more readable study experience.</p>
+    </article>
+
+    <article class="mc-info">
+      <div class="icon">☁</div>
+      <h3>Live Firebase Content</h3>
+      <p>Student content is loaded from the live platform so assigned subjects, topics, lessons and questions can stay current.</p>
+    </article>
+
+    <article class="mc-info">
+      <div class="icon">🖥</div>
+      <h3>Realistic CBT Simulation</h3>
+      <p>JAMB-style exam practice with timing, question navigation, review and result analysis.</p>
+    </article>
+
+    <article class="mc-info">
+      <div class="icon">📈</div>
+      <h3>Performance Analytics</h3>
+      <p>Track your progress, review accuracy and identify areas that deserve more practice.</p>
+    </article>
+
+    <article class="mc-info">
+      <div class="icon">📱</div>
+      <h3>Works on All Devices</h3>
+      <p>Study on your phone, tablet or computer with a responsive interface built for modern browsers.</p>
+    </article>
+
+    <article class="mc-info">
+      <div class="icon">🔖</div>
+      <h3>Review &amp; Bookmark</h3>
+      <p>Return to important questions and learning materials so your revision sessions remain focused.</p>
+    </article>
+  </div>
+</section>
+
+<section class="mc-section mc-subject-section" id="subjects">
+  <div class="mc-section-heading">
+    <span class="mc-kicker">JAMB Subjects Covered</span>
+    <h2>Learn. Practise. Test. Improve.</h2>
+    <p class="mc-section-lead">
+      Your student dashboard can present assigned subjects, topics, lessons and live questions from Firebase.
+    </p>
+  </div>
+
+  <div class="mc-subject-content">
+    <div class="mc-subject-box">
+      <h3>Core JAMB Preparation Areas</h3>
+
+      <div class="mc-subjects-large">
+        <div class="mc-large-subject mc-s1"><b>√x</b><span>Mathematics</span></div>
+        <div class="mc-large-subject mc-s3"><b>⚗</b><span>Chemistry</span></div>
+        <div class="mc-large-subject mc-s2"><b>⚛</b><span>Physics</span></div>
+        <div class="mc-large-subject mc-s4"><b>◒</b><span>Biology</span></div>
+        <div class="mc-large-subject mc-s5"><b>▤</b><span>English</span></div>
+        <div class="mc-large-subject mc-s6"><b>▧</b><span>Use of English</span></div>
+      </div>
+
+      <ul class="mc-stat-list">
+        <li>Topic-based practice with random question selection where supported.</li>
+        <li>Detailed explanations for questions and lessons where provided.</li>
+        <li>JAMB-style mock examination environment.</li>
+        <li>Performance and progress information for revision.</li>
+      </ul>
+    </div>
+
+    <div class="mc-subject-box">
+      <h3>Sample Standard Notation</h3>
+
+      <div class="mc-notation">
+        <div class="mc-notation-card math">
+          <h4>Mathematics</h4>
+          <div class="mc-formula">
+            x² + 5x + 6 = 0<br>
+            <sup>14</sup>⁄<sub>41</sub> &nbsp; √x<br>
+            6.02 × 10²³<br>
+            sin² θ + cos² θ = 1
+          </div>
+        </div>
+
+        <div class="mc-notation-card chem">
+          <h4>Chemistry</h4>
+          <div class="mc-formula">
+            H₂O<br>
+            H₂SO₄ + 2NaOH → Na₂SO₄ + 2H₂O<br>
+            CaCO₃ → CaO + CO₂<br>
+            FeSO₄
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="mc-section" id="how">
+  <div class="mc-section-heading">
+    <span class="mc-kicker">Simple Study Cycle</span>
+    <h2>How MathCloud Works</h2>
+    <p class="mc-section-lead">Learn → Practise → Test → Review → Improve.</p>
+  </div>
+
+  <div class="mc-steps">
+    <article class="mc-step">
+      <h3>Create your account</h3>
+      <p>Register with your details or use Google sign-in. Your account may require administrator activation before resources are available.</p>
+    </article>
+
+    <article class="mc-step">
+      <h3>Study your subjects</h3>
+      <p>Open assigned subjects and topics, read lessons, use available study tools and practise questions.</p>
+    </article>
+
+    <article class="mc-step">
+      <h3>Take a mock</h3>
+      <p>Choose an individual subject mock or the complete four-subject JAMB-style simulation and work against the timer.</p>
+    </article>
+
+    <article class="mc-step">
+      <h3>Review and improve</h3>
+      <p>Use your results and topic performance to identify weak areas, practise again and repeat the cycle.</p>
+    </article>
+  </div>
+</section>
+
+<section class="mc-section mc-cta-wrap">
+  <div class="mc-subscribe" id="subscribe">
+    <div>
+      <span class="mc-kicker" style="color:#ffe100">Get Started Today</span>
+      <h2>Ready to Prepare Smarter?</h2>
+      <p>
+        After registration, follow the subscription instructions shown in your dashboard.
+        If you have completed payment or need activation help, contact MathCloud Tutorial through the available WhatsApp support option.
+      </p>
+    </div>
+    <a class="btn btn-gold" href="register.html">Register now</a>
+  </div>
+</section>
+
+<section class="mc-section" id="faq">
+  <div class="mc-section-heading">
+    <span class="mc-kicker">Need Help?</span>
+    <h2>Frequently Asked Questions</h2>
+  </div>
+
+  <div class="mc-faq">
+    <details>
+      <summary>What is included in a full mock?</summary>
+      <p class="muted">A full mock follows the JAMB four-subject structure: 60 Use of English questions and 40 questions for each of three other subjects, making 180 questions.</p>
+    </details>
+
+    <details>
+      <summary>Can I practise only one subject?</summary>
+      <p class="muted">Yes. Subject mocks can be taken independently and are scored separately.</p>
+    </details>
+
+    <details>
+      <summary>Can I print my result?</summary>
+      <p class="muted">Yes. Completed results include a print/save-as-PDF option where enabled by the platform.</p>
+    </details>
+
+    <details>
+      <summary>What happens if my internet connection fails?</summary>
+      <p class="muted">MathCloud displays a clear offline screen when your device loses network access. Live Firebase question loading, saving and result submission require reconnection.</p>
+    </details>
+
+    <details>
+      <summary>Does MathCloud replace the official JAMB examination?</summary>
+      <p class="muted">No. MathCloud is a preparation platform. Scores are estimates for practice and are not official JAMB results.</p>
+    </details>
+  </div>
+</section>
+
+<!-- LOGIN CARD: IDs and form structure intentionally preserved for existing Firebase logic -->
+<section class="mc-section" style="padding-top:15px" id="loginSection">
+  <div class="mc-login" id="loginCard" style="max-width:520px;margin:auto">
+    <div class="brand">
+      <img src="../assets/logo.png" alt="MathCloud logo">
+      <strong>MathCloud Tutorial</strong>
+    </div>
+
+    <h2>JAMB Preparation</h2>
+    <p class="muted">Sign in to continue to your student dashboard.</p>
+
+    <div id="notice" class="notice" hidden></div>
+
+    <form id="loginForm" novalidate>
+      <div class="field">
+        <label for="email">Email address</label>
+        <input id="email" type="email" required autocomplete="email" inputmode="email">
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" required autocomplete="current-password">
+      </div>
+
+      <button class="btn btn-primary btn-block" id="loginBtn">Sign in</button>
+    </form>
+
+    <div class="actions">
+      <button class="btn btn-secondary" type="button" id="googleBtn">Continue with Google</button>
+      <button class="btn btn-secondary" type="button" id="forgotBtn">Forgot password?</button>
+    </div>
+
+    <p class="muted">New student? <a href="register.html">Create an account</a></p>
+    <small class="muted">Your account, questions and progress are protected by Firebase security rules.</small>
+  </div>
+</section>
+
+</main>
+
+<footer class="mc-footer">
+  <div class="mc-footer-content">
+    © MathCloud Tutorial · JAMB Preparation &amp; Self-Tutoring Platform
+    <small>Learn • Practise • Succeed</small>
+  </div>
+</footer>
+
+
+<!-- MathCloud PWA installation guide -->
+<div class="mc-install-guide" id="mcInstallGuide" role="dialog" aria-modal="true" aria-labelledby="mcInstallTitle">
+  <div class="mc-install-card">
+    <div class="mc-install-head">
+      <h3 id="mcInstallTitle">Install MathCloud</h3>
+      <button class="mc-install-close" id="mcInstallClose" type="button" aria-label="Close">×</button>
+    </div>
+    <div id="mcInstallContent"></div>
+  </div>
+</div>
+
+<!-- =========================================================
+     EXISTING APP/FIREBASE SCRIPTS — KEPT IN PLACE
+     ========================================================= -->
+<script src="../shared/app-config.js"></script>
+<script src="../shared/firebase-config.js"></script>
+<script src="../shared/app.js"></script>
+
+<script>
+/* =========================================================
+   MATHCLOUD PWA INSTALL ENGINE
+   Native Android prompt + iOS Safari instructions + fallback
+   ========================================================= */
+(function(){
+  let mcDeferredPrompt = null;
+  const installBtn = document.getElementById("mcInstallBtn");
+  const navBtn = document.getElementById("mcInstallNavBtn");
+  const status = document.getElementById("mcInstallStatus");
+  const guide = document.getElementById("mcInstallGuide");
+  const content = document.getElementById("mcInstallContent");
+  const closeBtn = document.getElementById("mcInstallClose");
+
+  const ua = navigator.userAgent || "";
+  const isIOS = /iPhone|iPad|iPod/i.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(ua);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    window.navigator.standalone === true;
+
+  function setStatus(message){
+    if(status) status.textContent = message;
+  }
+
+  function showGuide(title, html){
+    document.getElementById("mcInstallTitle").textContent = title;
+    content.innerHTML = html;
+    guide.classList.add("show");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeGuide(){
+    guide.classList.remove("show");
+    document.body.style.overflow = "";
+  }
+
+  function iosInstructions(){
+    showGuide("Install MathCloud on iPhone / iPad", `
+      <p>MathCloud can be added to your Home Screen and used like an app.</p>
+      <ol class="mc-install-steps">
+        <li>Open this page in <strong>Safari</strong>.</li>
+        <li>Tap the <strong>Share</strong> button <strong>□↑</strong>.</li>
+        <li>Scroll down and select <strong>Add to Home Screen</strong>.</li>
+        <li>Tap <strong>Add</strong>.</li>
+      </ol>
+      <div class="mc-install-tip"><strong>Important:</strong> If this page opened inside WhatsApp, Facebook, Gmail or another app, choose <strong>Open in Safari</strong> first.</div>
+    `);
+  }
+
+  function androidInstructions(){
+    showGuide("Install MathCloud on Android", `
+      <p>MathCloud is ready to be added to your phone or tablet.</p>
+      <ol class="mc-install-steps">
+        <li>Tap <strong>Install MathCloud</strong> if your browser displays the installation prompt.</li>
+        <li>If no prompt appears, open the browser <strong>⋮ menu</strong>.</li>
+        <li>Choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+        <li>Confirm by tapping <strong>Install</strong> or <strong>Add</strong>.</li>
+      </ol>
+      <div class="mc-install-tip"><strong>Tip:</strong> Chrome, Edge and Samsung Internet may use slightly different wording.</div>
+    `);
+  }
+
+  function generalInstructions(){
+    showGuide("Install MathCloud", `
+      <p>Use a modern browser such as Chrome, Edge or Safari.</p>
+      <ol class="mc-install-steps">
+        <li>Open the browser menu.</li>
+        <li>Look for <strong>Install app</strong>, <strong>Install MathCloud</strong> or <strong>Add to Home Screen</strong>.</li>
+        <li>Confirm the installation.</li>
+      </ol>
+    `);
+  }
+
+  async function install(){
+    if(isStandalone){
+      setStatus("✓ MathCloud is already installed on this device.");
+      return;
+    }
+
+    if(mcDeferredPrompt){
+      try{
+        mcDeferredPrompt.prompt();
+        const choice = await mcDeferredPrompt.userChoice;
+        if(choice.outcome === "accepted"){
+          setStatus("MathCloud installation started.");
+        }else{
+          setStatus("Installation cancelled. You can try again.");
+        }
+      }catch(error){
+        setStatus("Use your browser menu to install MathCloud.");
+      }
+      mcDeferredPrompt = null;
+      return;
+    }
+
+    if(isIOS) iosInstructions();
+    else if(isAndroid) androidInstructions();
+    else generalInstructions();
+  }
+
+  window.addEventListener("beforeinstallprompt", function(event){
+    event.preventDefault();
+    mcDeferredPrompt = event;
+    setStatus("✓ MathCloud is ready to install.");
+  });
+
+  window.addEventListener("appinstalled", function(){
+    mcDeferredPrompt = null;
+    setStatus("✓ MathCloud has been installed.");
+    if(installBtn){
+      installBtn.textContent = "✓ Installed";
+      installBtn.disabled = true;
+    }
+    if(navBtn){
+      navBtn.textContent = "✓ Installed";
+      navBtn.disabled = true;
+    }
+    closeGuide();
+  });
+
+  [installBtn, navBtn].forEach(btn => {
+    if(btn) btn.addEventListener("click", install);
+  });
+
+  if(closeBtn) closeBtn.addEventListener("click", closeGuide);
+  if(guide) guide.addEventListener("click", e => {
+    if(e.target === guide) closeGuide();
+  });
+
+  if(isStandalone){
+    setStatus("✓ MathCloud is already installed on this device.");
+    if(installBtn){
+      installBtn.textContent = "✓ Installed";
+      installBtn.disabled = true;
+    }
+    if(navBtn){
+      navBtn.textContent = "✓ Installed";
+      navBtn.disabled = true;
+    }
+  }else if(isIOS){
+    setStatus("iPhone/iPad ready — tap Install MathCloud for Safari instructions.");
+  }else if(isAndroid){
+    setStatus("Android ready — tap Install MathCloud to install the student app.");
+  }
+
+  // Register service worker. The service worker must be served from the
+  // directory above this page so it can cover the MathCloud app scope.
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("../sw.js", {scope:"../"})
+        .then(reg => console.log("MathCloud PWA service worker:", reg.scope))
+        .catch(err => console.warn("MathCloud PWA service worker unavailable:", err));
+    });
+  }
+})();
+</script>
+
+<script>
+const loginForm=$("#loginForm");let busy=false;
+auth.onAuthStateChanged(async user=>{if(!user||busy)return;try{await user.reload();const u=auth.currentUser||user;if(!u.emailVerified){await auth.signOut();return}location.replace((await isAdmin(u))||(await ensureBootstrapAdmin(u))?"../admin/index.html":"dashboard.html")}catch(e){console.warn("session check failed",e)}});
+loginForm.addEventListener("submit",async e=>{e.preventDefault();if(busy)return;if(!navigator.onLine){showNotice("You are offline. Reconnect to sign in.","warning");return}busy=true;$("#loginBtn").disabled=true;try{const cred=await auth.signInWithEmailAndPassword($("#email").value.trim().toLowerCase(),$("#password").value);await cred.user.reload();if(!cred.user.emailVerified){await auth.signOut();showNotice("Verify your email address before signing in.","warning");return}if((await isAdmin(cred.user))||(await ensureBootstrapAdmin(cred.user))){location.replace("../admin/index.html");return}const gate=await enforceSingleDevice(cred.user);if(!gate.allowed){await auth.signOut();showNotice(gate.reason,"error");return}location.replace("dashboard.html")}catch(err){showNotice("We could not sign you in. Check your email and password and try again.","error")}finally{busy=false;$("#loginBtn").disabled=false}});
+$("#googleBtn").onclick=async()=>{if(busy)return;if(!navigator.onLine){showNotice("You are offline. Reconnect to use Google sign-in.","warning");return}busy=true;try{const cred=await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());if(await isAdmin(cred.user)){location.replace("../admin/index.html");return}const parts=(cred.user.displayName||"Student").trim().split(/\s+/);const snap=await db.ref(`users/${cred.user.uid}`).once("value"),existing=snap.val()||{};await saveUserProfile(cred.user,{provider:"google",firstName:existing.firstName||parts[0]||"Student",surname:existing.surname||parts.slice(1).join(""),subscription:existing.subscription||{status:"pending",amount:MATHCLOUD_CONFIG.annualFee,durationDays:MATHCLOUD_CONFIG.subscriptionDays},createdAt:existing.createdAt||Date.now()});const gate=await enforceSingleDevice(cred.user);if(!gate.allowed){await auth.signOut();showNotice(gate.reason,"error");return}location.replace("dashboard.html")}catch(e){showNotice("Google sign-in could not be completed. Please try again.","error")}finally{busy=false}};
+$("#forgotBtn").onclick=async()=>{if(!navigator.onLine){showNotice("You are offline. Reconnect first.","warning");return}const email=$("#email").value.trim();if(!email){showNotice("Enter your email address first.","warning");return}try{await auth.sendPasswordResetEmail(email);showNotice("Password reset instructions have been sent if the account exists.","success")}catch(e){showNotice("We could not send the reset email. Check the address and try again.","error")}};
+</script>
+</body>
+</html>

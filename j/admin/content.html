@@ -1,0 +1,1199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Content Library — MathCloud JAMB</title>
+
+<!-- Open the DNS/TLS connections the page needs while the HTML is still parsing. -->
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://school-37083-default-rtdb.firebaseio.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
+<link rel="stylesheet" href="../shared/styles.css">
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+<!--
+  MathJax is configured here, but the ~1 MB library is NOT downloaded on page load.
+  ensureMathJax() injects it the first time a preview actually needs typesetting,
+  which keeps the first paint of this page fast.
+-->
+<script>
+window.MathJax = {
+  loader: { load: ["[tex]/ams", "[tex]/mhchem"] },
+  tex: {
+    inlineMath: [["\\(", "\\)"], ["$", "$"]],
+    displayMath: [["\\[", "\\]"], ["$$", "$$"]],
+    processEscapes: true,
+    packages: { "[+]": ["ams", "mhchem"] }
+  },
+  chtml: { scale: 1.05 },
+  options: { skipHtmlTags: ["script", "noscript", "style", "textarea", "pre", "code"] }
+};
+</script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <img src="../assets/logo.png" alt="MathCloud Tutorial logo">
+    <span>MathCloud JAMB · Content Library</span>
+  </div>
+  <div class="topnav">
+    <a href="index.html">Dashboard</a>
+    <a href="settings.html">Settings</a>
+    <button class="btn btn-secondary" id="refresh" type="button">Refresh</button>
+    <button class="btn btn-secondary" id="logout" type="button">Sign out</button>
+  </div>
+</header>
+
+<main class="container">
+  <div id="notice" class="notice" hidden></div>
+
+  <section class="hero">
+    <div class="toolbar">
+      <div>
+        <p class="muted" style="margin:0">Firebase content management</p>
+        <h1 style="margin:4px 0">Lessons &amp; Questions</h1>
+        <p class="muted" style="margin:0">Production content is stored in Firebase.</p>
+      </div>
+      <div class="row">
+        <label class="btn btn-primary" id="importLabel">
+          Import subject JSON
+          <input id="contentImport" type="file" accept="application/json,.json" hidden>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid grid-3" style="margin-top:20px">
+    <div class="card">
+      <div class="muted">Subjects</div>
+      <div class="stat" id="subjectCount">—</div>
+    </div>
+    <div class="card">
+      <div class="muted">Lessons</div>
+      <div class="stat" id="lessonCount">—</div>
+      <div class="muted mc-stat-note" id="lessonCountNote"></div>
+    </div>
+    <div class="card">
+      <div class="muted">Questions</div>
+      <div class="stat" id="questionCount">—</div>
+      <div class="muted mc-stat-note" id="questionCountNote"></div>
+    </div>
+  </div>
+
+  <!-- Long-running jobs report here instead of silently blocking the page. -->
+  <div id="progressWrap" class="mc-progress" hidden>
+    <div class="mc-progress-head">
+      <span id="progressLabel">Working…</span>
+      <span class="muted" id="progressValue"></span>
+    </div>
+    <div class="mc-progress-track"><div class="mc-progress-bar" id="progressBar"></div></div>
+  </div>
+
+  <section class="card" style="margin-top:20px">
+    <div class="toolbar">
+      <div>
+        <h2 class="section-title">Browse content</h2>
+        <p class="muted">Select a subject and topic to inspect the Firebase lesson and its questions.</p>
+      </div>
+      <div class="row">
+        <select id="subjectSelect" aria-label="Subject"></select>
+        <select id="topicSelect" aria-label="Topic"></select>
+      </div>
+    </div>
+    <div id="lessonPreview" style="margin-top:18px"></div>
+    <div id="questionPreview" style="margin-top:18px"></div>
+  </section>
+
+  <section class="card" style="margin-top:20px">
+    <div class="toolbar">
+      <div>
+        <h2 class="section-title">Maintenance</h2>
+        <p class="muted">
+          Run these only when you need them. Imports already publish to students and build
+          the index automatically — these actions repair subjects loaded by an older build.
+        </p>
+      </div>
+      <div class="row">
+        <select id="maintenanceSubject" aria-label="Subject to maintain"></select>
+        <button class="btn btn-secondary" id="rebuildIndex" type="button">Rebuild index</button>
+        <button class="btn btn-secondary" id="publishQuestions" type="button">Publish to students</button>
+      </div>
+    </div>
+    <p class="muted" style="margin:12px 0 0">
+      <strong>Rebuild index</strong> recounts lessons and questions and adds the fast topic lookup key.
+      <strong>Publish to students</strong> copies the admin question bank into the student-readable
+      <code>publicQuestions</code> path in small batches.
+    </p>
+  </section>
+
+  <!-- Shared confirmation dialog used by openConfirm() in shared/app.js. -->
+  <div class="modal-backdrop" id="confirmModal" hidden>
+    <div class="modal" style="max-width:520px">
+      <h2>Please confirm</h2>
+      <p class="muted" id="confirmMessage"></p>
+      <div class="actions">
+        <button class="btn btn-secondary" id="confirmNo" type="button">Cancel</button>
+        <button class="btn btn-primary" id="confirmYes" type="button">Continue</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../shared/app-config.js"></script>
+<script src="../shared/firebase-config.js"></script>
+<script src="../shared/app.js"></script>
+<script src="../shared/mathjax-renderer.js"></script>
+<script>
+"use strict";
+
+/* ==========================================================================
+ * MathCloud JAMB — Administrator Content Library
+ *
+ * PERFORMANCE CONTRACT
+ * --------------------
+ * The production bank holds roughly 19,000 questions (~12 MB of JSON). The
+ * previous build of this page downloaded `subjects` + `lessons` + the ENTIRE
+ * `questions` node on every single load, then wrote a ~12 MB multi-path update
+ * back to Firebase to mirror every record into `publicQuestions`. That implicit
+ * whole-bank read and write is why this page never finished loading.
+ *
+ * This build never touches the whole bank implicitly:
+ *
+ *   Page load      -> `subjects` + `contentIndex` only (a few KB). Instant.
+ *   Select subject -> `lessons/{subjectId}` only, cached for the session.
+ *   Select topic   -> that one topic's questions via the `subjectTopic` index,
+ *                     capped at PREVIEW_FETCH_LIMIT records.
+ *   Publishing     -> an explicit, batched maintenance action with progress.
+ *
+ * Every function from the previous build is preserved by name and call
+ * signature (topicKey, esc, lessonFor, load, updateCounts, renderSubjects,
+ * renderTopics, renderPreview, importSubject), so nothing that referenced
+ * them breaks.
+ * ========================================================================== */
+
+/* ------------------------------------------------------------------ *
+ * Tunables
+ * ------------------------------------------------------------------ */
+const PREVIEW_FETCH_LIMIT = 300;                // Max questions pulled per topic preview.
+const QUESTIONS_PER_PAGE  = 25;                 // Rendered per page (MathJax cost).
+const WRITE_BATCH_SIZE    = 150;                // Records per multi-path write.
+const IMPORT_MAX_BYTES    = 15 * 1024 * 1024;   // Import file-size ceiling.
+const SESSION_CACHE_KEY   = "mathcloud.admin.contentLibrary.v2";
+
+/* ------------------------------------------------------------------ *
+ * State
+ *
+ * `lessons` and `questions` remain page-level caches so the original
+ * synchronous helpers keep working. They are filled lazily, per subject and
+ * per topic — never with the whole bank.
+ * ------------------------------------------------------------------ */
+let subjects     = {};   // subjectId  -> subject record (small)
+let lessons      = {};   // subjectId  -> { topicId: lesson }  (lazy, per subject)
+let questions    = {};   // questionId -> question             (lazy, current topic only)
+let contentIndex = {};   // subjectId  -> { lessonCount, questionCount, topics }
+
+let currentSubjectId = "";
+let currentTopicId   = "";
+let questionPage     = 0;
+let previewToken     = 0;      // Guards against out-of-order async previews.
+let busy             = false;  // True while an import or maintenance job runs.
+let allowPreview     = false;  // Set once admin auth has resolved; see warmStart().
+
+const subjectQuestionCache = new Map(); // subjectId -> question array (fallback/maintenance)
+
+/* ------------------------------------------------------------------ *
+ * Small helpers (names preserved from the previous build)
+ * ------------------------------------------------------------------ */
+
+/** Normalise any topic label into a stable, Firebase-safe key. */
+function topicKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** Escape a value for safe insertion into HTML. */
+function esc(value) {
+  return escapeHtml(String(value ?? ""));
+}
+
+/**
+ * Resolve the lesson for a subject/topic from the in-memory cache.
+ * Kept synchronous and behaviour-compatible with the previous build; call
+ * ensureLessons(subjectId) first so the cache is populated.
+ */
+function lessonFor(sid, tid) {
+  const bag = lessons[sid] || {};
+  return (
+    bag[tid] ||
+    bag[topicKey(tid)] ||
+    Object.values(bag).find(
+      l => l && (l.topicId === tid || l.id === tid || topicKey(l.topic) === tid)
+    ) ||
+    null
+  );
+}
+
+/** Read a topic's display name, tolerating both the legacy string and the rich object shape. */
+function topicNameOf(entry, fallbackId) {
+  if (typeof entry === "string") return entry;
+  return String(entry?.name || entry?.topic || entry?.title || fallbackId || "");
+}
+
+/**
+ * Return a subject's topics as sorted [topicId, topicRecord] pairs.
+ * Supports the legacy `{ tid: "Name" }` shape and the richer
+ * `{ tid: { name, topicId, order, questionCount } }` shape written by importSubject().
+ */
+function topicEntriesFor(sid) {
+  const raw = subjects[sid]?.topics || {};
+  const entries = Object.entries(raw).map(([id, value]) => [
+    String(id),
+    typeof value === "string" ? { name: value } : (value || {})
+  ]);
+  entries.sort((a, b) => {
+    const ao = Number(a[1]?.order);
+    const bo = Number(b[1]?.order);
+    const aHas = Number.isFinite(ao);
+    const bHas = Number.isFinite(bo);
+    if (aHas && bHas && ao !== bo) return ao - bo;
+    if (aHas !== bHas) return aHas ? -1 : 1;
+    return topicNameOf(a[1], a[0]).localeCompare(topicNameOf(b[1], b[0]));
+  });
+  return entries;
+}
+
+/* ------------------------------------------------------------------ *
+ * UI state: busy flag, progress bar, skeletons
+ * ------------------------------------------------------------------ */
+
+function setBusy(state) {
+  busy = !!state;
+  ["refresh", "rebuildIndex", "publishQuestions"].forEach(id => {
+    const el = $("#" + id);
+    if (el) el.disabled = busy;
+  });
+  const importInput = $("#contentImport");
+  const importLabel = $("#importLabel");
+  if (importInput) importInput.disabled = busy;
+  if (importLabel) importLabel.classList.toggle("mc-disabled", busy);
+  document.body.classList.toggle("mc-busy", busy);
+}
+
+function setProgress(label, done = 0, total = 0) {
+  const wrap = $("#progressWrap");
+  if (!wrap) return;
+  if (!label) { wrap.hidden = true; return; }
+  const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((done / total) * 100))) : 0;
+  wrap.hidden = false;
+  $("#progressLabel").textContent = label;
+  $("#progressValue").textContent = total > 0
+    ? `${done.toLocaleString()} / ${total.toLocaleString()} · ${pct}%`
+    : "";
+  $("#progressBar").style.width = pct + "%";
+}
+
+function clearProgress() { setProgress(null); }
+
+/** Yield to the browser so the progress bar can repaint between batches. */
+function nextFrame() {
+  return new Promise(resolve => requestAnimationFrame(() => resolve()));
+}
+
+function skeleton(lines = 3) {
+  return `<div class="mc-skeleton" aria-hidden="true">${
+    Array.from({ length: lines }, () => '<span class="mc-skeleton-line"></span>').join("")
+  }</div>`;
+}
+
+/* ------------------------------------------------------------------ *
+ * MathJax: injected on first use, not on page load
+ * ------------------------------------------------------------------ */
+let mathJaxInjected = false;
+function ensureMathJax() {
+  if (mathJaxInjected) return;
+  mathJaxInjected = true;
+  const s = document.createElement("script");
+  s.id = "MathJax-script";
+  s.src = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js";
+  s.async = true;
+  document.head.appendChild(s);
+}
+
+/* ------------------------------------------------------------------ *
+ * Session cache — lets repeat visits paint before Firebase answers
+ * ------------------------------------------------------------------ */
+
+function readSessionCache() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function writeSessionCache() {
+  try {
+    sessionStorage.setItem(
+      SESSION_CACHE_KEY,
+      JSON.stringify({ subjects, contentIndex, savedAt: Date.now() })
+    );
+  } catch (e) {
+    // Quota or private-mode failures are non-fatal; the page just loses its warm start.
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Counts (derived — never reads the question bank)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Best available statistics for one subject.
+ * Prefers `contentIndex`, then the per-topic counts stored on the subject
+ * record, then whatever happens to already be cached in memory.
+ */
+function subjectStats(sid) {
+  const idx = contentIndex[sid];
+  if (idx && Number.isFinite(Number(idx.questionCount))) {
+    return {
+      lessons: Number(idx.lessonCount || 0),
+      questions: Number(idx.questionCount || 0),
+      exact: true
+    };
+  }
+
+  let questionTotal = 0;
+  let lessonTotal = 0;
+  let known = false;
+
+  topicEntriesFor(sid).forEach(([, topic]) => {
+    const n = Number(topic?.questionCount);
+    if (Number.isFinite(n) && n > 0) { questionTotal += n; known = true; }
+    if (topic?.hasLesson) lessonTotal += 1;
+  });
+
+  const cachedLessons = lessons[sid] ? Object.keys(lessons[sid]).length : 0;
+  if (cachedLessons > lessonTotal) lessonTotal = cachedLessons;
+
+  return { lessons: lessonTotal, questions: questionTotal, exact: known };
+}
+
+/** Refresh the three headline statistics. */
+function updateCounts() {
+  const ids = Object.keys(subjects);
+  let lessonTotal = 0;
+  let questionTotal = 0;
+  const pending = [];
+
+  ids.forEach(sid => {
+    const stats = subjectStats(sid);
+    lessonTotal += stats.lessons;
+    questionTotal += stats.questions;
+    if (!stats.exact) pending.push(subjects[sid]?.name || sid);
+  });
+
+  $("#subjectCount").textContent = ids.length.toLocaleString();
+  $("#lessonCount").textContent = lessonTotal.toLocaleString();
+  $("#questionCount").textContent = questionTotal.toLocaleString();
+
+  // Name the subjects that still need indexing, so the operator knows exactly
+  // which ones to run Rebuild index against rather than guessing.
+  const note = pending.length
+    ? `Approximate — run Rebuild index for ${pending.join(", ")}.`
+    : "";
+  $("#lessonCountNote").textContent = note;
+  $("#questionCountNote").textContent = note;
+}
+
+/* ------------------------------------------------------------------ *
+ * Scoped data access
+ * ------------------------------------------------------------------ */
+
+/** Load and cache the lessons for ONE subject. */
+async function ensureLessons(sid) {
+  if (!sid) return {};
+  if (lessons[sid]) return lessons[sid];
+  const snap = await db.ref(`lessons/${sid}`).once("value");
+  lessons[sid] = snap.val() || {};
+  return lessons[sid];
+}
+
+/**
+ * Fetch the questions for a single topic.
+ *
+ * Fast path: the `subjectTopic` composite key ("{subjectId}::{topicId}") lets
+ * Firebase return only this topic's records. Content written by importSubject()
+ * or repaired by Rebuild index carries that key.
+ *
+ * Fallback: older records have no `subjectTopic`, so the subject is fetched
+ * once, cached for the session, and filtered in memory. Slower, but correct.
+ */
+async function fetchTopicQuestions(sid, tid, topicName) {
+  const composite = `${sid}::${tid}`;
+
+  try {
+    const snap = await db.ref("questions")
+      .orderByChild("subjectTopic")
+      .equalTo(composite)
+      .limitToFirst(PREVIEW_FETCH_LIMIT)
+      .once("value");
+
+    const bag = snap.val() || {};
+    const ids = Object.keys(bag);
+    if (ids.length) {
+      return { rows: ids.map(id => ({ ...bag[id], id: bag[id]?.id || id })), indexed: true };
+    }
+  } catch (e) {
+    console.warn("subjectTopic lookup unavailable; falling back to a subject scan.", e);
+  }
+
+  const all = await fetchSubjectQuestions(sid);
+  const rows = all.filter(q =>
+    q && (q.topicId === tid || q.topic === topicName || topicKey(q.topic) === tid)
+  );
+  return { rows, indexed: false };
+}
+
+/** Fetch (and cache) every question for ONE subject. Used by the fallback and by maintenance. */
+async function fetchSubjectQuestions(sid) {
+  if (subjectQuestionCache.has(sid)) return subjectQuestionCache.get(sid);
+  const snap = await db.ref("questions").orderByChild("subject").equalTo(sid).once("value");
+  const bag = snap.val() || {};
+  const rows = Object.entries(bag).map(([id, q]) => ({ ...q, id: q?.id || id }));
+  subjectQuestionCache.set(sid, rows);
+  return rows;
+}
+
+/* ------------------------------------------------------------------ *
+ * Boot / refresh
+ * ------------------------------------------------------------------ */
+
+/**
+ * Load the page. Reads only `subjects` and `contentIndex` — a few kilobytes —
+ * then renders. Lessons and questions are fetched on demand by renderPreview().
+ */
+async function load() {
+  try {
+    $("#lessonPreview").innerHTML = skeleton(3);
+    $("#questionPreview").innerHTML = skeleton(4);
+
+    const [subjectSnap, indexSnap] = await Promise.all([
+      db.ref("subjects").once("value"),
+      db.ref("contentIndex").once("value").catch(() => null)
+    ]);
+
+    subjects = subjectSnap.val() || {};
+    contentIndex = (indexSnap && indexSnap.val()) || {};
+
+    // Anything cached from a previous view may now be stale.
+    lessons = {};
+    questions = {};
+    subjectQuestionCache.clear();
+
+    writeSessionCache();
+    updateCounts();
+
+    // renderSubjects() cascades into renderTopics() -> renderPreview().
+    allowPreview = true;
+    await renderSubjects();
+  } catch (e) {
+    console.error(e);
+    showNotice("Content could not be loaded. Check Firebase rules.", "error");
+    $("#lessonPreview").innerHTML = "";
+    $("#questionPreview").innerHTML = "";
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Rendering
+ * ------------------------------------------------------------------ */
+
+/** Populate the subject dropdowns and cascade into topics. */
+function renderSubjects() {
+  const ids = Object.keys(subjects).sort((a, b) =>
+    String(subjects[a]?.name || a).localeCompare(String(subjects[b]?.name || b))
+  );
+
+  const options = ids
+    .map(id => `<option value="${esc(id)}">${esc(subjects[id]?.name || id)}</option>`)
+    .join("");
+
+  const subjectSelect = $("#subjectSelect");
+  subjectSelect.innerHTML = options || '<option value="">No subjects imported yet</option>';
+  if (ids.includes(currentSubjectId)) subjectSelect.value = currentSubjectId;
+  currentSubjectId = subjectSelect.value || "";
+
+  const maintenanceSelect = $("#maintenanceSubject");
+  maintenanceSelect.innerHTML = options || '<option value="">No subjects imported yet</option>';
+  if (ids.includes(currentSubjectId)) maintenanceSelect.value = currentSubjectId;
+
+  return renderTopics();
+}
+
+/** Populate the topic dropdown for the selected subject, in syllabus order. */
+function renderTopics() {
+  const sid = $("#subjectSelect").value;
+  currentSubjectId = sid;
+
+  const entries = topicEntriesFor(sid);
+  const topicSelect = $("#topicSelect");
+  topicSelect.innerHTML = entries
+    .map(([id, topic]) => `<option value="${esc(id)}">${esc(topicNameOf(topic, id))}</option>`)
+    .join("") || '<option value="">No topics available</option>';
+
+  if (entries.some(([id]) => id === currentTopicId)) topicSelect.value = currentTopicId;
+  currentTopicId = topicSelect.value || "";
+
+  return renderPreview();
+}
+
+/**
+ * Render the lesson and question preview for the current selection.
+ * Fetches only this subject's lessons and this topic's questions.
+ */
+async function renderPreview() {
+  // The warm start paints the dropdowns and counts from the session cache before
+  // Firebase auth has resolved. Reading content that early would only fail, so the
+  // preview stays gated until load() runs inside requireAdminAuth().
+  if (!allowPreview) return;
+
+  const token = ++previewToken;
+  const sid = $("#subjectSelect").value;
+  const tid = $("#topicSelect").value;
+
+  currentSubjectId = sid;
+  currentTopicId = tid;
+  questionPage = 0;
+
+  const lessonHost = $("#lessonPreview");
+  const questionHost = $("#questionPreview");
+
+  if (!sid || !tid) {
+    lessonHost.innerHTML = '<div class="notice info">Import a subject JSON file to get started.</div>';
+    questionHost.innerHTML = "";
+    return;
+  }
+
+  lessonHost.innerHTML = skeleton(3);
+  questionHost.innerHTML = skeleton(4);
+
+  const topicEntry = (subjects[sid]?.topics || {})[tid];
+  const topic = topicNameOf(topicEntry, tid) || tid;
+
+  try {
+    await ensureLessons(sid);
+    if (token !== previewToken) return; // A newer selection superseded this one.
+
+    const lesson = lessonFor(sid, tid);
+    lessonHost.innerHTML = lesson
+      ? `<article class="card">
+           <div class="muted">Lesson · ${esc(topic)}</div>
+           <h2>${esc(lesson.title || topic)}</h2>
+           <div class="lesson-content">${lesson.html || ""}</div>
+         </article>`
+      : `<div class="notice warning">No lesson has been saved for this topic yet.<br>
+           <small>Expected Firebase path: lessons/${esc(sid)}/${esc(tid)}</small>
+         </div>`;
+
+    // Counts can refine now that this subject's lessons are in memory.
+    updateCounts();
+
+    ensureMathJax();
+    mcPrepareRichMath(lessonHost, sid);
+    mcTypesetSoon(lessonHost);
+
+    const { rows, indexed } = await fetchTopicQuestions(sid, tid, topic);
+    if (token !== previewToken) return;
+
+    // `questions` holds only the current topic's records, keyed by id.
+    questions = {};
+    rows.forEach(q => { if (q && q.id) questions[String(q.id)] = q; });
+
+    renderQuestionPage(rows, sid, indexed);
+  } catch (e) {
+    console.error("Preview failed", e);
+    if (token !== previewToken) return;
+    questionHost.innerHTML =
+      '<div class="notice error">This topic could not be previewed. Check Firebase rules and your connection.</div>';
+  }
+}
+
+/** Render one page of the current topic's questions, with paging controls. */
+function renderQuestionPage(rows, sid, indexed) {
+  const host = $("#questionPreview");
+  const total = rows.length;
+
+  if (!total) {
+    host.innerHTML = `<div class="card">
+        <div class="toolbar"><h2 class="section-title">Questions (0)</h2></div>
+        <p class="muted">No questions for this topic.</p>
+      </div>`;
+    return;
+  }
+
+  const pageCount = Math.max(1, Math.ceil(total / QUESTIONS_PER_PAGE));
+  questionPage = Math.max(0, Math.min(questionPage, pageCount - 1));
+
+  const start = questionPage * QUESTIONS_PER_PAGE;
+  const slice = rows.slice(start, start + QUESTIONS_PER_PAGE);
+  const capped = indexed && total >= PREVIEW_FETCH_LIMIT;
+
+  const body = slice.map((q, i) => {
+    const number = start + i + 1;
+    const options = Object.entries(q.options || {})
+      .map(([k, v]) => `<span class="mc-option"><b>${esc(k)}.</b> ${esc(v)}</span>`)
+      .join("");
+    return `<article class="mc-question-preview">
+        <strong>${number}. ${esc(q.question)}</strong>
+        <div class="muted mc-question-meta">
+          Answer: ${esc(q.correctAnswer)} · ${esc(q.difficulty || "medium")}
+        </div>
+        <div class="muted mc-question-options">${options}</div>
+      </article>`;
+  }).join("");
+
+  host.innerHTML = `<div class="card">
+      <div class="toolbar">
+        <h2 class="section-title">Questions (${total.toLocaleString()}${capped ? "+" : ""})</h2>
+        <div class="row">
+          <button class="btn btn-secondary" id="qPrev" type="button"${questionPage === 0 ? " disabled" : ""}>Previous</button>
+          <span class="muted">Page ${questionPage + 1} of ${pageCount}</span>
+          <button class="btn btn-secondary" id="qNext" type="button"${questionPage >= pageCount - 1 ? " disabled" : ""}>Next</button>
+        </div>
+      </div>
+      ${capped ? `<p class="muted mc-stat-note">Showing the first ${PREVIEW_FETCH_LIMIT.toLocaleString()} questions for this topic.</p>` : ""}
+      ${indexed ? "" : '<p class="muted mc-stat-note">Loaded with a full-subject scan. Run <strong>Rebuild index</strong> to make this topic load instantly.</p>'}
+      ${body}
+    </div>`;
+
+  const prev = $("#qPrev");
+  const next = $("#qNext");
+  if (prev) prev.onclick = () => { questionPage -= 1; renderQuestionPage(rows, sid, indexed); };
+  if (next) next.onclick = () => { questionPage += 1; renderQuestionPage(rows, sid, indexed); };
+
+  // Convert plain notation to TeX once, on the rendered text nodes, then typeset.
+  ensureMathJax();
+  mcPrepareRichMath(host, sid);
+  mcTypesetSoon(host);
+}
+
+/* ------------------------------------------------------------------ *
+ * Import
+ * ------------------------------------------------------------------ */
+
+/** Build lesson HTML from a structured lesson record when no `html` field is supplied. */
+function buildLessonHtml(lesson) {
+  const e = v => String(v ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  const asList = v => (Array.isArray(v) ? v : [].concat(v ?? []).filter(Boolean));
+
+  if (typeof lesson.html === "string" && lesson.html.trim()) return lesson.html;
+
+  const parts = [];
+  if (lesson.overview) parts.push(`<p>${e(lesson.overview)}</p>`);
+  if (lesson.syllabusCoverage) {
+    parts.push(`<h3>Syllabus coverage</h3><p>${e(lesson.syllabusCoverage)}</p>`);
+  }
+
+  const objectives = asList(lesson.learningObjectives);
+  if (objectives.length) {
+    parts.push(`<h3>Learning objectives</h3><ul>${objectives.map(x => `<li>${e(x)}</li>`).join("")}</ul>`);
+  }
+
+  const study = asList(lesson.howToStudy);
+  if (study.length) {
+    parts.push(`<h3>How to study</h3><ol>${study.map(x => `<li>${e(x)}</li>`).join("")}</ol>`);
+  }
+
+  const examples = asList(lesson.workedExamples);
+  if (examples.length) {
+    parts.push("<h3>Worked examples</h3>");
+    examples.forEach((ex, i) => {
+      if (typeof ex === "string") {
+        parts.push(`<p><strong>Example ${i + 1}:</strong> ${e(ex)}</p>`);
+      } else {
+        parts.push(
+          `<div><p><strong>Example ${i + 1}:</strong> ${e(ex.example || "")}</p>` +
+          `<p><strong>Solution:</strong> ${e(ex.solution || "")}</p>` +
+          (ex.why ? `<p><strong>Why:</strong> ${e(ex.why)}</p>` : "") +
+          `</div>`
+        );
+      }
+    });
+  }
+
+  const mistakes = asList(lesson.commonMistakes);
+  if (mistakes.length) {
+    parts.push(`<h3>Common mistakes</h3><ul>${mistakes.map(x => `<li>${e(x)}</li>`).join("")}</ul>`);
+  }
+  if (lesson.checkpoint) {
+    parts.push(`<h3>Self-test checkpoint</h3><p>${e(lesson.checkpoint)}</p>`);
+  }
+
+  if (!parts.length) {
+    return `<p>Self-tutoring lesson for ${e(lesson.topic || lesson.title || "this topic")}.</p>`;
+  }
+  return parts.join("");
+}
+
+/**
+ * Import a subject JSON package into Firebase.
+ *
+ * Order of operations:
+ *   1. Validate the entire payload BEFORE writing anything, so a bad file
+ *      cannot leave the database half-populated.
+ *   2. Write the subject record, its topic catalogue and all its lessons.
+ *   3. Write the questions in batches of WRITE_BATCH_SIZE, mirrored into
+ *      `publicQuestions` so subscribed students can read them immediately.
+ *   4. Write a `contentIndex` entry so this page can show exact counts
+ *      without ever reading the question bank again.
+ *
+ * Each question is stamped with `subjectTopic` ("{subjectId}::{topicId}"),
+ * which is what makes per-topic preview loads instant.
+ */
+async function importSubject(file) {
+  if (!file) return;
+  if (busy) { showNotice("Another job is still running. Please wait for it to finish.", "warning"); return; }
+
+  setBusy(true);
+  let saved = 0;
+
+  try {
+    if (file.size > IMPORT_MAX_BYTES) {
+      throw new Error(`The selected JSON file is larger than ${Math.round(IMPORT_MAX_BYTES / 1048576)} MB.`);
+    }
+
+    setProgress("Reading and validating the file…");
+    await nextFrame();
+
+    const payload = JSON.parse(await file.text());
+    const s = payload.subject;
+
+    if (!s || typeof s !== "object" || !s.id || !s.name) {
+      throw new Error("Missing subject.id or subject.name.");
+    }
+    if (!Array.isArray(payload.lessons)) throw new Error("The JSON must contain a lessons array.");
+    if (!Array.isArray(payload.questions)) throw new Error("The JSON must contain a questions array.");
+
+    const subjectId = String(s.id).trim();
+    const subjectName = String(s.name).trim();
+    if (!/^[a-z0-9_-]+$/i.test(subjectId)) {
+      throw new Error("Invalid subject id: use letters, numbers, hyphens or underscores only.");
+    }
+
+    /* --- Subject record, topic catalogue and lessons -------------------- */
+    const updates = {};
+    updates[`subjects/${subjectId}/id`] = subjectId;
+    updates[`subjects/${subjectId}/name`] = subjectName;
+    if (s.description !== undefined) {
+      updates[`subjects/${subjectId}/description`] = String(s.description);
+    }
+
+    // Seed from the package's own topic catalogue so syllabus order survives
+    // the import, then overlay whatever the lessons declare.
+    const topicRecords = {};
+    Object.entries(s.topics || {}).forEach(([tid, value], i) => {
+      const id = String(tid).trim();
+      if (!id) return;
+      topicRecords[id] = {
+        topicId: id,
+        name: topicNameOf(value, id),
+        order: Number.isFinite(Number(value?.order)) ? Number(value.order) : i + 1,
+        questionCount: Number.isFinite(Number(value?.questionCount)) ? Number(value.questionCount) : 0,
+        hasLesson: false
+      };
+    });
+
+    const topicMap = {};
+    payload.lessons.forEach((l, i) => {
+      if (!l || typeof l !== "object") throw new Error(`Lesson ${i + 1} is not an object.`);
+      const tid = String(l.topicId || l.id || topicKey(l.topic || l.title || "")).trim();
+      const topicName = String(l.topic || l.title || "").trim();
+      if (!tid || !topicName) throw new Error(`Lesson ${i + 1} is missing topic/topicId.`);
+
+      topicMap[tid] = topicName;
+      const existing = topicRecords[tid] || {};
+      topicRecords[tid] = {
+        topicId: tid,
+        name: topicName,
+        order: Number.isFinite(Number(existing.order)) ? Number(existing.order) : i + 1,
+        questionCount: Number(existing.questionCount || 0),
+        hasLesson: true
+      };
+
+      updates[`lessons/${subjectId}/${tid}`] = {
+        id: l.id || tid,
+        topicId: tid,
+        subject: subjectId,
+        subjectName,
+        topic: topicName,
+        title: l.title || topicName,
+        html: buildLessonHtml(l),
+        updatedAt: Date.now()
+      };
+    });
+
+    if (!Object.keys(topicRecords).length) throw new Error("No lessons/topics were supplied.");
+    if (payload.questions.length === 0) throw new Error("No questions were supplied.");
+
+    /* --- Validate every question BEFORE writing anything ---------------- */
+    setProgress("Validating questions…", 0, payload.questions.length);
+    await nextFrame();
+
+    const prepared = payload.questions.map((q, n) => {
+      if (!q || typeof q !== "object") throw new Error(`Question ${n + 1} is not an object.`);
+      if (!q.question || typeof q.question !== "string") {
+        throw new Error(`Question ${n + 1} is missing question text.`);
+      }
+      if (!q.options || typeof q.options !== "object") {
+        throw new Error(`Question ${n + 1} is missing options.`);
+      }
+
+      const opts = { A: q.options.A, B: q.options.B, C: q.options.C, D: q.options.D };
+      if ([opts.A, opts.B, opts.C, opts.D].some(v => typeof v !== "string")) {
+        throw new Error(`Question ${n + 1} must have string options A, B, C and D.`);
+      }
+
+      const optionValues = [opts.A, opts.B, opts.C, opts.D].map(v => String(v).replace(/\s+/g," ").trim().toLowerCase());
+      if (new Set(optionValues).size !== optionValues.length) {
+        throw new Error(`Question ${n + 1} contains duplicate answer options.`);
+      }
+
+      const answer = String(q.correctAnswer || "").trim().toUpperCase();
+      if (!/^[ABCD]$/.test(answer)) {
+        throw new Error(`Question ${n + 1} has invalid correctAnswer. Use A, B, C or D.`);
+      }
+
+      const topicName = String(q.topic || "").trim();
+      if (!topicName) throw new Error(`Question ${n + 1} is missing topic.`);
+
+      const tid = String(q.topicId || topicKey(topicName)).trim();
+      if (!tid) throw new Error(`Question ${n + 1} has no usable topicId.`);
+
+      const id = String(q.id || db.ref("questions").push().key).trim();
+
+      return {
+        ...q,
+        id,
+        subject: subjectId,
+        subjectName,
+        topicId: tid,
+        topic: topicMap[tid] || topicName,
+        subjectTopic: `${subjectId}::${tid}`,
+        options: opts,
+        correctAnswer: answer,
+        updatedAt: Date.now(),
+        createdAt: q.createdAt || Date.now(),
+        active: q.active !== false
+      };
+    });
+
+    // Reject duplicate question wording inside the import. IDs can differ while the
+    // actual question is identical, which would defeat the student no-repeat engine.
+    const fingerprints = new Set();
+    prepared.forEach((q, i) => {
+      const fp = String(q.question || "").replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim().toLowerCase();
+      if (fp && fingerprints.has(fp)) throw new Error(`Duplicate question text detected around question ${i + 1}. Remove the duplicate before importing.`);
+      if (fp) fingerprints.add(fp);
+    });
+
+    // Recount topics from the questions actually being written, so counts are exact.
+    const topicCounts = {};
+    prepared.forEach(q => { topicCounts[q.topicId] = (topicCounts[q.topicId] || 0) + 1; });
+
+    Object.entries(topicCounts).forEach(([tid, count]) => {
+      if (!topicRecords[tid]) {
+        topicRecords[tid] = {
+          topicId: tid,
+          name: topicMap[tid] || tid,
+          order: Object.keys(topicRecords).length + 1,
+          hasLesson: false
+        };
+      }
+      topicRecords[tid].questionCount = count;
+    });
+
+    Object.entries(topicRecords).forEach(([tid, record]) => {
+      updates[`subjects/${subjectId}/topics/${tid}`] = record;
+    });
+
+    /* --- Write the subject and lessons ---------------------------------- */
+    setProgress(`Saving ${subjectName} lessons…`, 0, prepared.length);
+    await db.ref().update(updates);
+
+    /* --- Write questions in small batches -------------------------------- */
+    for (let start = 0; start < prepared.length; start += WRITE_BATCH_SIZE) {
+      const batch = prepared.slice(start, start + WRITE_BATCH_SIZE);
+      const qUpdates = {};
+      batch.forEach(full => {
+        qUpdates[`questions/${full.id}`] = full;
+        // Practice and mock are client-scored in this RTDB-only build, so the
+        // student-facing assessment record must retain correctAnswer/explanation.
+        qUpdates[`publicQuestions/${full.id}`] = full;
+        // Lightweight student index: students read only question metadata first,
+        // then fetch the small random set they actually need.
+        qUpdates[`publicQuestionIndex/${subjectId}/${full.id}`] = {
+          topicId: full.topicId,
+          topic: full.topic,
+          active: full.active !== false
+        };
+      });
+      await db.ref().update(qUpdates);
+      saved += batch.length;
+      setProgress(`Importing ${subjectName}…`, saved, prepared.length);
+      await nextFrame();
+    }
+
+    /* --- Write the content index ----------------------------------------- */
+    const indexTopics = {};
+    Object.entries(topicRecords).forEach(([tid, record]) => {
+      indexTopics[tid] = {
+        name: record.name,
+        order: record.order,
+        questionCount: Number(record.questionCount || 0),
+        hasLesson: !!record.hasLesson
+      };
+    });
+
+    await db.ref(`contentIndex/${subjectId}`).set({
+      subject: subjectId,
+      name: subjectName,
+      lessonCount: payload.lessons.length,
+      questionCount: prepared.length,
+      topics: indexTopics,
+      updatedAt: Date.now()
+    });
+
+    clearProgress();
+    showNotice(
+      `${subjectName}: ${payload.lessons.length} lessons and ${saved.toLocaleString()} questions saved to Firebase and published to students.`,
+      "success"
+    );
+
+    subjectQuestionCache.delete(subjectId);
+    delete lessons[subjectId];
+    currentSubjectId = subjectId;
+    currentTopicId = "";
+    await load();
+  } catch (e) {
+    console.error("Subject import failed:", e);
+    clearProgress();
+    const msg = e?.message || String(e) || "Unknown error";
+    const note = saved > 0 ? ` ${saved.toLocaleString()} questions were saved before the error.` : "";
+    showNotice(
+      `Import failed: ${msg}${note} Check that you are signed in as an admin and that Firebase rules allow admin writes.`,
+      "error"
+    );
+  } finally {
+    setBusy(false);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Maintenance
+ * ------------------------------------------------------------------ */
+
+/**
+ * Repair one subject that was written by an older build.
+ *
+ * Reads that subject's questions once (never the whole bank), then writes back
+ * in batches of WRITE_BATCH_SIZE:
+ *   - `subjectTopic`, the composite key that makes topic previews instant;
+ *   - optionally a `publicQuestions` mirror so subscribed students can read it;
+ *   - a `contentIndex` entry with exact lesson and question counts.
+ */
+async function rebuildSubject(sid, { publish = false } = {}) {
+  if (!sid) { showNotice("Select a subject first.", "warning"); return; }
+  if (busy) { showNotice("Another job is still running. Please wait for it to finish.", "warning"); return; }
+
+  const subjectName = subjects[sid]?.name || sid;
+  setBusy(true);
+
+  try {
+    setProgress(`Reading ${subjectName} lessons…`);
+    const lessonSnap = await db.ref(`lessons/${sid}`).once("value");
+    const lessonBag = lessonSnap.val() || {};
+    lessons[sid] = lessonBag;
+
+    setProgress(`Reading ${subjectName} questions…`);
+    await nextFrame();
+    subjectQuestionCache.delete(sid);
+    const rows = await fetchSubjectQuestions(sid);
+
+    const topicCounts = {};
+    rows.forEach(q => {
+      const tid = String(q?.topicId || topicKey(q?.topic) || "general");
+      topicCounts[tid] = (topicCounts[tid] || 0) + 1;
+    });
+
+    let done = 0;
+    for (let start = 0; start < rows.length; start += WRITE_BATCH_SIZE) {
+      const batch = rows.slice(start, start + WRITE_BATCH_SIZE);
+      const updates = {};
+
+      batch.forEach(q => {
+        if (!q || typeof q !== "object" || !q.id) return;
+        const tid = String(q.topicId || topicKey(q.topic) || "general");
+        const composite = `${sid}::${tid}`;
+
+        if (q.subjectTopic !== composite) {
+          updates[`questions/${q.id}/subjectTopic`] = composite;
+        }
+        // Always rebuild the lightweight student index. It contains metadata only
+        // and lets students select questions without downloading the whole bank.
+        updates[`publicQuestionIndex/${sid}/${q.id}`] = {
+          topicId: tid,
+          topic: q.topic || "",
+          active: q.active !== false
+        };
+        if (publish) {
+          const safe = { ...q, subjectTopic: composite };
+          delete safe.adminOnly;
+          // Student practice/mock are client-scored in this RTDB-only build, so the
+          // published assessment record must retain correctAnswer/explanation.
+          updates[`publicQuestions/${q.id}`] = safe;
+        }
+      });
+
+      if (Object.keys(updates).length) await db.ref().update(updates);
+      done += batch.length;
+      setProgress(
+        publish ? `Publishing ${subjectName} to students…` : `Indexing ${subjectName}…`,
+        done,
+        rows.length
+      );
+      await nextFrame();
+    }
+
+    /* --- Refresh the subject's topic records with exact counts ----------- */
+    const topicUpdates = {};
+    const indexTopics = {};
+
+    topicEntriesFor(sid).forEach(([tid, topic], i) => {
+      const record = {
+        topicId: tid,
+        name: topicNameOf(topic, tid),
+        order: Number.isFinite(Number(topic?.order)) ? Number(topic.order) : i + 1,
+        questionCount: Number(topicCounts[tid] || 0),
+        hasLesson: !!lessonFor(sid, tid)
+      };
+      topicUpdates[`subjects/${sid}/topics/${tid}`] = record;
+      indexTopics[tid] = {
+        name: record.name,
+        order: record.order,
+        questionCount: record.questionCount,
+        hasLesson: record.hasLesson
+      };
+    });
+
+    // Include any topic that exists only on questions, so the totals still add up.
+    Object.entries(topicCounts).forEach(([tid, count]) => {
+      if (indexTopics[tid]) return;
+      const name = rows.find(q => String(q?.topicId) === tid)?.topic || tid;
+      const order = Object.keys(indexTopics).length + 1;
+      const hasLesson = !!lessonFor(sid, tid);
+      topicUpdates[`subjects/${sid}/topics/${tid}`] = {
+        topicId: tid, name, order, questionCount: count, hasLesson
+      };
+      indexTopics[tid] = { name, order, questionCount: count, hasLesson };
+    });
+
+    if (Object.keys(topicUpdates).length) await db.ref().update(topicUpdates);
+
+    await db.ref(`contentIndex/${sid}`).set({
+      subject: sid,
+      name: subjectName,
+      lessonCount: Object.keys(lessonBag).length,
+      questionCount: rows.length,
+      topics: indexTopics,
+      updatedAt: Date.now()
+    });
+
+    clearProgress();
+    showNotice(
+      publish
+        ? `${subjectName}: ${rows.length.toLocaleString()} questions published to students and re-indexed.`
+        : `${subjectName}: index rebuilt for ${rows.length.toLocaleString()} questions.`,
+      "success"
+    );
+
+    subjectQuestionCache.delete(sid);
+    await load();
+  } catch (e) {
+    console.error("Maintenance job failed", e);
+    clearProgress();
+    showNotice(
+      `Maintenance failed: ${e?.message || e}. Check that you are signed in as an admin and that Firebase rules allow admin writes.`,
+      "error"
+    );
+  } finally {
+    setBusy(false);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Wiring
+ * ------------------------------------------------------------------ */
+
+$("#subjectSelect").onchange = () => {
+  currentTopicId = "";
+  $("#maintenanceSubject").value = $("#subjectSelect").value;
+  renderTopics();
+};
+
+$("#topicSelect").onchange = () => renderPreview();
+
+$("#refresh").onclick = () => {
+  if (busy) return;
+  lessons = {};
+  subjectQuestionCache.clear();
+  load();
+};
+
+$("#contentImport").onchange = async e => {
+  const file = e.target.files?.[0];
+  e.target.value = "";
+  await importSubject(file);
+};
+
+$("#rebuildIndex").onclick = () => openConfirm(
+  "Rebuild the index for this subject? This reads the subject's questions once, then writes the lightweight student question index and exact counts.",
+  () => rebuildSubject($("#maintenanceSubject").value, { publish: false })
+);
+
+$("#publishQuestions").onclick = () => openConfirm(
+  "Publish this subject's questions to students? This copies the admin bank into publicQuestions in small batches and rebuilds the index.",
+  () => rebuildSubject($("#maintenanceSubject").value, { publish: true })
+);
+
+$("#logout").onclick = async () => {
+  await auth.signOut();
+  location.replace("../student/index.html");
+};
+
+/* Warm start: paint cached subjects and counts immediately, then verify against Firebase. */
+(function warmStart() {
+  const cached = readSessionCache();
+  if (!cached || !cached.subjects || !Object.keys(cached.subjects).length) return;
+  subjects = cached.subjects;
+  contentIndex = cached.contentIndex || {};
+  renderSubjects();
+  updateCounts();
+})();
+
+requireAdminAuth(async () => { await load(); });
+</script>
+</body>
+</html>
