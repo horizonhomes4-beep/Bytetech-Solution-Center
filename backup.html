@@ -1,0 +1,2218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson Payment — Database Backup</title>
+<link rel="icon" href="logo.jpg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Excel export -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+<style>
+:root{
+    --cover:#304536;
+    --cover-dark:#1e2d22;
+    --cover-soft:#e7eee8;
+    --gold:#c99b45;
+    --gold-soft:#f7edd9;
+    --paper:#f7f5ef;
+    --paper-alt:#efede5;
+    --card:#fffdf8;
+    --ink:#273029;
+    --ink-soft:#58625a;
+    --ink-faint:#7d857e;
+    --rule:#d8d6cc;
+    --success:#2f7d4b;
+    --danger:#a94b4b;
+    --shadow:0 12px 35px rgba(30,45,34,.10);
+    --radius:16px;
+}
+
+*{
+    box-sizing:border-box
+}
+
+body{
+    margin:0;
+    min-height:100vh;
+    font-family:"Plus Jakarta Sans",Arial,sans-serif;
+    color:var(--ink);
+    background:
+        radial-gradient(
+            circle at top right,
+            rgba(201,155,69,.12),
+            transparent 30%
+        ),
+        var(--paper);
+}
+
+.page{
+    max-width:1180px;
+    margin:auto;
+    padding:28px 20px 50px
+}
+
+.topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    flex-wrap:wrap;
+    margin-bottom:24px
+}
+
+.brand{
+    display:flex;
+    align-items:center;
+    gap:14px
+}
+
+.logo{
+    width:52px;
+    height:52px;
+    border-radius:13px;
+    overflow:hidden;
+    background:var(--cover);
+    display:grid;
+    place-items:center;
+    box-shadow:var(--shadow)
+}
+
+.logo img{
+    width:100%;
+    height:100%;
+    object-fit:cover
+}
+
+h1,h2,h3,p{
+    margin:0
+}
+
+.brand h1{
+    font-size:22px;
+    color:var(--cover-dark)
+}
+
+.brand p{
+    font-size:12px;
+    color:var(--ink-faint);
+    margin-top:4px
+}
+
+.actions{
+    display:flex;
+    gap:9px;
+    flex-wrap:wrap
+}
+
+button{
+    border:0;
+    cursor:pointer;
+    font:inherit;
+    font-weight:700;
+    border-radius:10px;
+    padding:12px 17px;
+    transition:.18s ease
+}
+
+button:hover{
+    transform:translateY(-1px)
+}
+
+.primary{
+    background:var(--cover);
+    color:#fff
+}
+
+.primary:hover{
+    background:var(--cover-dark)
+}
+
+.gold{
+    background:var(--gold);
+    color:#fff
+}
+
+.secondary{
+    background:transparent;
+    border:1.5px solid var(--cover);
+    color:var(--cover)
+}
+
+.card{
+    background:rgba(255,253,248,.95);
+    border:1px solid var(--rule);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:24px;
+    margin-bottom:20px
+}
+
+.hero{
+    display:grid;
+    grid-template-columns:1.3fr .7fr;
+    gap:20px;
+    background:linear-gradient(
+        135deg,
+        var(--cover-dark),
+        var(--cover)
+    );
+    color:#fff;
+    border:0
+}
+
+.hero h2{
+    font-size:25px;
+    margin-bottom:9px
+}
+
+.hero p{
+    color:#dfe8e1;
+    line-height:1.65;
+    font-size:13px;
+    max-width:700px
+}
+
+.live{
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:14px;
+    padding:18px
+}
+
+.live .label{
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    color:#cdd9cf
+}
+
+.live .time{
+    font-size:18px;
+    font-weight:800;
+    margin-top:7px
+}
+
+.live .status{
+    font-size:12px;
+    margin-top:8px;
+    color:#dfe8e1
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:15px
+}
+
+.stat{
+    padding:19px;
+    background:var(--card);
+    border:1px solid var(--rule);
+    border-radius:14px
+}
+
+.stat small{
+    display:block;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--ink-faint);
+    font-size:10px;
+    font-weight:800;
+    margin-bottom:9px
+}
+
+.stat strong{
+    font-size:27px;
+    color:var(--cover-dark)
+}
+
+.stat span{
+    display:block;
+    color:var(--ink-faint);
+    font-size:11px;
+    margin-top:5px
+}
+
+.section-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    flex-wrap:wrap;
+    margin-bottom:17px
+}
+
+.section-head h3{
+    font-size:18px;
+    color:var(--cover-dark)
+}
+
+.badge{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    padding:7px 10px;
+    border-radius:999px;
+    background:var(--cover-soft);
+    color:var(--cover);
+    font-size:11px;
+    font-weight:800
+}
+
+.dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:var(--success)
+}
+
+.info{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px
+}
+
+.info-row{
+    background:var(--paper-alt);
+    border:1px solid var(--rule);
+    border-radius:10px;
+    padding:13px
+}
+
+.info-row small{
+    display:block;
+    color:var(--ink-faint);
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    margin-bottom:5px
+}
+
+.info-row strong{
+    font-size:13px;
+    word-break:break-word
+}
+
+.note{
+    margin-top:16px;
+    padding:13px 15px;
+    border-left:4px solid var(--gold);
+    background:var(--gold-soft);
+    color:#5d4b2b;
+    font-size:12px;
+    line-height:1.6
+}
+
+.steps{
+    color:var(--ink-soft);
+    font-size:13px;
+    line-height:1.75
+}
+
+.steps p{
+    margin-bottom:7px
+}
+
+#message{
+    position:fixed;
+    right:20px;
+    bottom:20px;
+    z-index:50;
+    max-width:380px;
+    padding:13px 17px;
+    border-radius:11px;
+    background:var(--cover-dark);
+    color:#fff;
+    box-shadow:var(--shadow);
+    transform:translateY(20px);
+    opacity:0;
+    pointer-events:none;
+    transition:.2s
+}
+
+#message.show{
+    transform:translateY(0);
+    opacity:1
+}
+
+#message.error{
+    background:var(--danger)
+}
+
+.loading{
+    opacity:.65;
+    pointer-events:none
+}
+
+@media(max-width:850px){
+
+    .hero{
+        grid-template-columns:1fr
+    }
+
+    .grid{
+        grid-template-columns:repeat(2,1fr)
+    }
+}
+
+@media(max-width:560px){
+
+    .page{
+        padding:18px 12px 35px
+    }
+
+    .grid,
+    .info{
+        grid-template-columns:1fr
+    }
+
+    .actions{
+        width:100%
+    }
+
+    .actions button{
+        flex:1
+    }
+
+    .hero h2{
+        font-size:21px
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+
+<header class="topbar">
+
+    <div class="brand">
+
+        <div class="logo">
+            <img src="logo.jpg" alt="Logo">
+        </div>
+
+        <div>
+            <h1>Database Backup</h1>
+            <p>Lesson Payment Management System</p>
+        </div>
+
+    </div>
+
+    <div class="actions">
+
+        <button
+            class="secondary"
+            id="refreshBtn"
+        >
+            Refresh
+        </button>
+
+        <button
+            class="primary"
+            id="backupBtn"
+        >
+            Create Excel Backup
+        </button>
+
+    </div>
+
+</header>
+
+
+<section class="card hero">
+
+    <div>
+
+        <h2>
+            Protect the current database
+        </h2>
+
+        <p>
+            This page watches the live Firebase data and shows
+            the latest update. When you create a backup, the
+            current database is saved into an easy-to-read Excel
+            workbook. A separate exact JSON copy is also downloaded
+            for database restoration.
+        </p>
+
+    </div>
+
+    <div class="live">
+
+        <div class="label">
+            Live database status
+        </div>
+
+        <div
+            class="time"
+            id="lastUpdated"
+        >
+            Waiting for Firebase…
+        </div>
+
+        <div
+            class="status"
+            id="connectionStatus"
+        >
+            Connecting…
+        </div>
+
+    </div>
+
+</section>
+
+
+<section class="grid">
+
+    <div class="stat">
+
+        <small>
+            Teachers
+        </small>
+
+        <strong id="teacherCount">
+            0
+        </strong>
+
+        <span>
+            Current records
+        </span>
+
+    </div>
+
+
+    <div class="stat">
+
+        <small>
+            Students
+        </small>
+
+        <strong id="studentCount">
+            0
+        </strong>
+
+        <span>
+            Current records
+        </span>
+
+    </div>
+
+
+    <div class="stat">
+
+        <small>
+            Payment Records
+        </small>
+
+        <strong id="paymentCount">
+            0
+        </strong>
+
+        <span>
+            Current teacher payment entries
+        </span>
+
+    </div>
+
+
+    <div class="stat">
+
+        <small>
+            Total Records
+        </small>
+
+        <strong id="recordCount">
+            0
+        </strong>
+
+        <span>
+            Across all backup sections
+        </span>
+
+    </div>
+
+</section>
+
+
+<section class="card">
+
+    <div class="section-head">
+
+        <h3>
+            Current database snapshot
+        </h3>
+
+        <span class="badge">
+            <span class="dot"></span>
+            Live
+        </span>
+
+    </div>
+
+
+    <div class="info">
+
+        <div class="info-row">
+
+            <small>
+                Database
+            </small>
+
+            <strong>
+                lessonPayment
+            </strong>
+
+        </div>
+
+
+        <div class="info-row">
+
+            <small>
+                Last Firebase update received
+            </small>
+
+            <strong id="snapshotTime">
+                —
+            </strong>
+
+        </div>
+
+
+        <div class="info-row">
+
+            <small>
+                Teachers path
+            </small>
+
+            <strong>
+                lessonPayment/teachers
+            </strong>
+
+        </div>
+
+
+        <div class="info-row">
+
+            <small>
+                Students path
+            </small>
+
+            <strong>
+                lessonPayment/students
+            </strong>
+
+        </div>
+
+
+        <div class="info-row">
+
+            <small>
+                Payments path
+            </small>
+
+            <strong>
+                lessonPayment/teacherPayments
+            </strong>
+
+        </div>
+
+
+        <div class="info-row">
+
+            <small>
+                Backup format
+            </small>
+
+            <strong>
+                Human-readable Excel + exact JSON
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <div class="note">
+
+        <strong>Important:</strong>
+
+        The Excel file is designed for people to read.
+        Information is separated into normal columns instead
+        of being hidden inside technical JSON text.
+
+        The JSON file is also downloaded because it preserves
+        the exact Firebase database structure and is useful
+        for restoring the database.
+
+    </div>
+
+</section>
+
+
+<section class="card">
+
+    <div class="section-head">
+
+        <h3>
+            How this backup works
+        </h3>
+
+    </div>
+
+    <div class="steps">
+
+        <p>
+            <strong>1.</strong>
+            The page continuously reads the current Teachers,
+            Students and Teacher Payments data.
+        </p>
+
+        <p>
+            <strong>2.</strong>
+            Click <strong>Create Excel Backup</strong>
+            whenever you want to save a backup.
+        </p>
+
+        <p>
+            <strong>3.</strong>
+            The Excel file automatically separates information
+            into readable columns such as Teacher Name,
+            Phone Number, Email, Payment Date and Amount.
+        </p>
+
+        <p>
+            <strong>4.</strong>
+            The filename automatically contains the date and time,
+            for example:
+            <strong>
+                lesson-payment-backup-2026-09-25-141300.xlsx
+            </strong>
+        </p>
+
+        <p>
+            <strong>5.</strong>
+            An exact JSON backup with the same timestamp is
+            downloaded at the same time.
+        </p>
+
+    </div>
+
+</section>
+
+
+<footer
+    style="
+        text-align:center;
+        color:var(--ink-faint);
+        font-size:11px;
+        padding:8px
+    "
+>
+    Lesson Payment Management System • Backup Centre
+</footer>
+
+</div>
+
+
+<div id="message"></div>
+
+
+<script type="module">
+
+/* =========================================================
+   FIREBASE
+   ========================================================= */
+
+import {
+    initializeApp
+} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+
+import {
+    getDatabase,
+    ref,
+    onValue,
+    get
+} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+
+
+const firebaseConfig = {
+
+    apiKey:
+        "AIzaSyB78-XIa4cPsOAQMWefhzGYkMGAlwNtJx8",
+
+    authDomain:
+        "set-3-6e04d.firebaseapp.com",
+
+    databaseURL:
+        "https://set-3-6e04d-default-rtdb.firebaseio.com",
+
+    projectId:
+        "set-3-6e04d",
+
+    storageBucket:
+        "set-3-6e04d.firebasestorage.app",
+
+    messagingSenderId:
+        "906900598918",
+
+    appId:
+        "1:906900598918:web:bf83e8df4f13147fe02107"
+};
+
+
+const app =
+    initializeApp(firebaseConfig);
+
+const db =
+    getDatabase(app);
+
+
+const teachersRef =
+    ref(db, "lessonPayment/teachers");
+
+const studentsRef =
+    ref(db, "lessonPayment/students");
+
+const paymentsRef =
+    ref(db, "lessonPayment/teacherPayments");
+
+
+/* =========================================================
+   DATABASE DATA
+   ========================================================= */
+
+let backupData = {
+
+    teachers: {},
+
+    students: {},
+
+    teacherPayments: {}
+
+};
+
+
+let updateTimes = {
+
+    teachers: null,
+
+    students: null,
+
+    payments: null
+
+};
+
+
+/* =========================================================
+   HELPER
+   ========================================================= */
+
+const $ = id =>
+    document.getElementById(id);
+
+
+function now(){
+
+    return new Date();
+
+}
+
+
+function pad(number){
+
+    return String(number).padStart(2, "0");
+
+}
+
+
+/* =========================================================
+   FILE TIMESTAMP
+   ========================================================= */
+
+function timestamp(date = now()){
+
+    return [
+
+        date.getFullYear(),
+
+        pad(date.getMonth() + 1),
+
+        pad(date.getDate())
+
+    ].join("-") +
+
+    "-" +
+
+    [
+
+        pad(date.getHours()),
+
+        pad(date.getMinutes()),
+
+        pad(date.getSeconds())
+
+    ].join("");
+
+}
+
+
+/* =========================================================
+   HUMAN DATE
+   ========================================================= */
+
+function readable(date = now()){
+
+    return new Intl.DateTimeFormat(
+        "en-NG",
+        {
+            dateStyle: "medium",
+            timeStyle: "medium",
+            hour12: false
+        }
+    ).format(date);
+
+}
+
+
+/* =========================================================
+   COUNT RECORDS
+   ========================================================= */
+
+function countRecords(value){
+
+    return value &&
+           typeof value === "object"
+
+        ? Object.keys(value).length
+
+        : 0;
+
+}
+
+
+/* =========================================================
+   TOTAL RECORDS
+   ========================================================= */
+
+function totalRecords(){
+
+    return (
+
+        countRecords(
+            backupData.teachers
+        )
+
+        +
+
+        countRecords(
+            backupData.students
+        )
+
+        +
+
+        Object.values(
+            backupData.teacherPayments || {}
+        ).reduce(
+
+            (total, teacherPayments) =>
+
+                total +
+                countRecords(
+                    teacherPayments
+                ),
+
+            0
+        )
+
+    );
+
+}
+
+
+/* =========================================================
+   MESSAGE
+   ========================================================= */
+
+function showMessage(
+    message,
+    error = false
+){
+
+    const box =
+        $("message");
+
+    box.textContent =
+        message;
+
+    box.className =
+        error
+            ? "show error"
+            : "show";
+
+    clearTimeout(
+        showMessage.timer
+    );
+
+    showMessage.timer =
+        setTimeout(
+            () => {
+
+                box.className = "";
+
+            },
+            5000
+        );
+
+}
+
+
+/* =========================================================
+   UPDATE PAGE
+   ========================================================= */
+
+function render(){
+
+    const teachers =
+        countRecords(
+            backupData.teachers
+        );
+
+
+    const students =
+        countRecords(
+            backupData.students
+        );
+
+
+    const payments =
+        Object.values(
+            backupData.teacherPayments || {}
+        ).reduce(
+
+            (total, records) =>
+
+                total +
+                countRecords(records),
+
+            0
+
+        );
+
+
+    $("teacherCount").textContent =
+        teachers.toLocaleString();
+
+
+    $("studentCount").textContent =
+        students.toLocaleString();
+
+
+    $("paymentCount").textContent =
+        payments.toLocaleString();
+
+
+    $("recordCount").textContent =
+        totalRecords().toLocaleString();
+
+
+    const times =
+        Object.values(
+            updateTimes
+        ).filter(Boolean);
+
+
+    const latest =
+        times.length
+
+            ? new Date(
+                Math.max(
+                    ...times.map(
+                        date =>
+                            date.getTime()
+                    )
+                )
+            )
+
+            : null;
+
+
+    $("lastUpdated").textContent =
+        latest
+
+            ? readable(latest)
+
+            : "Waiting for Firebase…";
+
+
+    $("snapshotTime").textContent =
+        latest
+
+            ? readable(latest)
+
+            : "—";
+
+
+    $("connectionStatus").textContent =
+        "Connected • Current Firebase data loaded";
+
+}
+
+
+/* =========================================================
+   FIREBASE LIVE CONNECTION
+   ========================================================= */
+
+function subscribe(
+    pathRef,
+    key
+){
+
+    onValue(
+
+        pathRef,
+
+        snapshot => {
+
+            backupData[key] =
+                snapshot.val() || {};
+
+            updateTimes[key] =
+                now();
+
+            render();
+
+        },
+
+        error => {
+
+            $("connectionStatus").textContent =
+                "Unable to read Firebase data";
+
+            showMessage(
+                "Firebase read failed: " +
+                error.message,
+                true
+            );
+
+        }
+
+    );
+
+}
+
+
+subscribe(
+    teachersRef,
+    "teachers"
+);
+
+
+subscribe(
+    studentsRef,
+    "students"
+);
+
+
+subscribe(
+    paymentsRef,
+    "teacherPayments"
+);
+
+
+/* =========================================================
+   REFRESH
+   ========================================================= */
+
+async function refresh(){
+
+    $("refreshBtn")
+        .classList
+        .add("loading");
+
+
+    try{
+
+        const [
+            teachers,
+            students,
+            payments
+        ] = await Promise.all([
+
+            get(teachersRef),
+
+            get(studentsRef),
+
+            get(paymentsRef)
+
+        ]);
+
+
+        backupData = {
+
+            teachers:
+                teachers.val() || {},
+
+            students:
+                students.val() || {},
+
+            teacherPayments:
+                payments.val() || {}
+
+        };
+
+
+        const t =
+            now();
+
+
+        updateTimes = {
+
+            teachers: t,
+
+            students: t,
+
+            payments: t
+
+        };
+
+
+        render();
+
+
+        showMessage(
+            "Current Firebase data refreshed."
+        );
+
+
+    }catch(error){
+
+        showMessage(
+            "Refresh failed: " +
+            error.message,
+            true
+        );
+
+
+    }finally{
+
+        $("refreshBtn")
+            .classList
+            .remove("loading");
+
+    }
+
+}
+
+
+/* =========================================================
+   CONVERT TECHNICAL FIELD NAMES TO HUMAN LANGUAGE
+   ========================================================= */
+
+function humanLabel(value){
+
+    if(!value){
+
+        return "";
+
+    }
+
+
+    return String(value)
+
+        /*
+           firstName → first Name
+        */
+        .replace(
+            /([a-z])([A-Z])/g,
+            "$1 $2"
+        )
+
+        /*
+           first_name → first name
+        */
+        .replace(
+            /[_-]+/g,
+            " "
+        )
+
+        /*
+           Remove repeated spaces
+        */
+        .replace(
+            /\s+/g,
+            " "
+        )
+
+        .trim()
+
+        /*
+           first name → First Name
+        */
+        .replace(
+            /\b\w/g,
+            letter =>
+                letter.toUpperCase()
+        );
+
+}
+
+
+/* =========================================================
+   CONVERT VALUES TO HUMAN LANGUAGE
+   ========================================================= */
+
+function humanValue(value){
+
+    if(
+        value === null ||
+        value === undefined
+    ){
+
+        return "";
+
+    }
+
+
+    /*
+       true → Yes
+       false → No
+    */
+    if(
+        typeof value === "boolean"
+    ){
+
+        return value
+            ? "Yes"
+            : "No";
+
+    }
+
+
+    /*
+       Arrays become readable lists.
+    */
+    if(
+        Array.isArray(value)
+    ){
+
+        return value
+            .map(
+                item =>
+                    humanValue(item)
+            )
+            .join(", ");
+
+    }
+
+
+    /*
+       Objects become readable text.
+    */
+    if(
+        typeof value === "object"
+    ){
+
+        return Object.entries(value)
+
+            .map(
+                ([key, val]) =>
+
+                    `${humanLabel(key)}: ${humanValue(val)}`
+            )
+
+            .join(" | ");
+
+    }
+
+
+    return String(value);
+
+}
+
+
+/* =========================================================
+   FLATTEN NESTED FIREBASE DATA
+   =========================================================
+
+   Example:
+
+   {
+       name: "John",
+       contact: {
+           phone: "08012345678"
+       }
+   }
+
+   becomes:
+
+   Name → John
+   Contact - Phone → 08012345678
+   ========================================================= */
+
+function flattenObject(
+    object,
+    prefix = "",
+    result = {}
+){
+
+    if(
+        !object ||
+        typeof object !== "object"
+    ){
+
+        return result;
+
+    }
+
+
+    Object.entries(object)
+        .forEach(
+            ([key, value]) => {
+
+                const readableKey =
+                    humanLabel(key);
+
+
+                const finalKey =
+                    prefix
+
+                        ? `${prefix} - ${readableKey}`
+
+                        : readableKey;
+
+
+                if(
+
+                    value !== null &&
+
+                    typeof value === "object" &&
+
+                    !Array.isArray(value)
+
+                ){
+
+                    flattenObject(
+                        value,
+                        finalKey,
+                        result
+                    );
+
+                }else{
+
+                    result[finalKey] =
+                        humanValue(value);
+
+                }
+
+            }
+        );
+
+
+    return result;
+
+}
+
+
+/* =========================================================
+   TEACHER ROWS
+   ========================================================= */
+
+function buildTeacherRows(
+    records
+){
+
+    return Object.entries(
+        records || {}
+    ).map(
+        ([id, value]) => {
+
+            const row =
+                flattenObject(value);
+
+
+            return {
+
+                "Teacher ID":
+                    id,
+
+                ...row
+
+            };
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   STUDENT ROWS
+   ========================================================= */
+
+function buildStudentRows(
+    records
+){
+
+    return Object.entries(
+        records || {}
+    ).map(
+        ([id, value]) => {
+
+            const row =
+                flattenObject(value);
+
+
+            return {
+
+                "Student ID":
+                    id,
+
+                ...row
+
+            };
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   PAYMENT ROWS
+   ========================================================= */
+
+function buildPaymentRows(
+    allPayments
+){
+
+    const rows = [];
+
+
+    Object.entries(
+        allPayments || {}
+    ).forEach(
+
+        ([teacherId, payments]) => {
+
+            Object.entries(
+                payments || {}
+            ).forEach(
+
+                ([paymentId, value]) => {
+
+                    const row =
+                        flattenObject(value);
+
+
+                    rows.push({
+
+                        "Teacher ID":
+                            teacherId,
+
+                        "Payment ID":
+                            paymentId,
+
+                        ...row
+
+                    });
+
+                }
+
+            );
+
+        }
+
+    );
+
+
+    return rows;
+
+}
+
+
+/* =========================================================
+   FORMAT EXCEL WORKSHEET
+   ========================================================= */
+
+function formatWorksheet(
+    sheet
+){
+
+    if(!sheet["!ref"]){
+
+        return;
+
+    }
+
+
+    const range =
+        XLSX.utils.decode_range(
+            sheet["!ref"]
+        );
+
+
+    const widths = [];
+
+
+    for(
+        let column = range.s.c;
+
+        column <= range.e.c;
+
+        column++
+    ){
+
+        let longest =
+            12;
+
+
+        for(
+            let row = range.s.r;
+
+            row <= range.e.r;
+
+            row++
+        ){
+
+            const cellAddress =
+                XLSX.utils.encode_cell({
+
+                    r: row,
+
+                    c: column
+
+                });
+
+
+            const cell =
+                sheet[cellAddress];
+
+
+            if(
+                cell &&
+                cell.v !== undefined
+            ){
+
+                const text =
+                    String(cell.v);
+
+
+                longest =
+                    Math.max(
+                        longest,
+                        text.length
+                    );
+
+            }
+
+        }
+
+
+        /*
+           Prevent columns from becoming
+           ridiculously wide.
+        */
+        widths.push({
+
+            wch:
+                Math.min(
+                    longest + 2,
+                    40
+                )
+
+        });
+
+    }
+
+
+    sheet["!cols"] =
+        widths;
+
+
+    /*
+       Freeze the first row.
+    */
+    sheet["!freeze"] = {
+
+        xSplit: 0,
+
+        ySplit: 1
+
+    };
+
+}
+
+
+/* =========================================================
+   CREATE READABLE SHEET
+   ========================================================= */
+
+function createReadableSheet(
+    workbook,
+    rows,
+    sheetName
+){
+
+    if(!rows.length){
+
+        const emptySheet =
+            XLSX.utils.aoa_to_sheet([
+
+                [
+                    `${sheetName} — No records found`
+                ]
+
+            ]);
+
+
+        XLSX.utils.book_append_sheet(
+
+            workbook,
+
+            emptySheet,
+
+            sheetName
+
+        );
+
+
+        return;
+
+    }
+
+
+    const sheet =
+        XLSX.utils.json_to_sheet(
+            rows
+        );
+
+
+    formatWorksheet(
+        sheet
+    );
+
+
+    XLSX.utils.book_append_sheet(
+
+        workbook,
+
+        sheet,
+
+        sheetName
+
+    );
+
+}
+
+
+/* =========================================================
+   CREATE EXCEL BACKUP
+   ========================================================= */
+
+function createExcel(
+    filename,
+    createdAt
+){
+
+    const workbook =
+        XLSX.utils.book_new();
+
+
+    /* -----------------------------------------------------
+       COUNTS
+       ----------------------------------------------------- */
+
+    const teacherCount =
+        countRecords(
+            backupData.teachers
+        );
+
+
+    const studentCount =
+        countRecords(
+            backupData.students
+        );
+
+
+    const paymentCount =
+        Object.values(
+            backupData.teacherPayments || {}
+        ).reduce(
+
+            (number, records) =>
+
+                number +
+                countRecords(records),
+
+            0
+
+        );
+
+
+    /* -----------------------------------------------------
+       BACKUP SUMMARY
+       ----------------------------------------------------- */
+
+    const summary = [
+
+        [
+            "LESSON PAYMENT MANAGEMENT SYSTEM"
+        ],
+
+        [
+            "DATABASE BACKUP"
+        ],
+
+        [
+            ""
+        ],
+
+        [
+            "BACKUP INFORMATION",
+            ""
+        ],
+
+        [
+            "Date and Time Created",
+            readable(createdAt)
+        ],
+
+        [
+            "Firebase Database",
+            "lessonPayment"
+        ],
+
+        [
+            "Backup File",
+            filename
+        ],
+
+        [
+            "Backup Type",
+            "Human-readable Excel backup"
+        ],
+
+        [
+            ""
+        ],
+
+        [
+            "RECORD SUMMARY",
+            ""
+        ],
+
+        [
+            "Teachers",
+            teacherCount
+        ],
+
+        [
+            "Students",
+            studentCount
+        ],
+
+        [
+            "Teacher Payments",
+            paymentCount
+        ],
+
+        [
+            "Total Records",
+            totalRecords()
+        ],
+
+        [
+            ""
+        ],
+
+        [
+            "WHAT THE SHEETS CONTAIN",
+            ""
+        ],
+
+        [
+            "Teachers",
+            "List of all teachers"
+        ],
+
+        [
+            "Students",
+            "List of all students"
+        ],
+
+        [
+            "Teacher Payments",
+            "Payment records grouped by teacher"
+        ]
+
+    ];
+
+
+    const summarySheet =
+        XLSX.utils.aoa_to_sheet(
+            summary
+        );
+
+
+    summarySheet["!cols"] = [
+
+        {
+            wch: 30
+        },
+
+        {
+            wch: 65
+        }
+
+    ];
+
+
+    XLSX.utils.book_append_sheet(
+
+        workbook,
+
+        summarySheet,
+
+        "Backup Summary"
+
+    );
+
+
+    /* -----------------------------------------------------
+       TEACHERS
+       ----------------------------------------------------- */
+
+    createReadableSheet(
+
+        workbook,
+
+        buildTeacherRows(
+            backupData.teachers
+        ),
+
+        "Teachers"
+
+    );
+
+
+    /* -----------------------------------------------------
+       STUDENTS
+       ----------------------------------------------------- */
+
+    createReadableSheet(
+
+        workbook,
+
+        buildStudentRows(
+            backupData.students
+        ),
+
+        "Students"
+
+    );
+
+
+    /* -----------------------------------------------------
+       PAYMENTS
+       ----------------------------------------------------- */
+
+    createReadableSheet(
+
+        workbook,
+
+        buildPaymentRows(
+            backupData.teacherPayments
+        ),
+
+        "Teacher Payments"
+
+    );
+
+
+    /* -----------------------------------------------------
+       DOWNLOAD EXCEL
+       ----------------------------------------------------- */
+
+    XLSX.writeFile(
+
+        workbook,
+
+        filename
+
+    );
+
+}
+
+
+/* =========================================================
+   CREATE EXACT JSON BACKUP
+   ========================================================= */
+
+function createJson(
+    filename,
+    createdAt
+){
+
+    const payload = {
+
+        backupType:
+            "Lesson Payment Firebase Backup",
+
+        createdAt:
+            createdAt.toISOString(),
+
+        createdAtLocal:
+            readable(createdAt),
+
+        firebaseRoot:
+            "lessonPayment",
+
+        data: {
+
+            teachers:
+                backupData.teachers,
+
+            students:
+                backupData.students,
+
+            teacherPayments:
+                backupData.teacherPayments
+
+        }
+
+    };
+
+
+    const blob =
+        new Blob(
+
+            [
+                JSON.stringify(
+                    payload,
+                    null,
+                    2
+                )
+            ],
+
+            {
+                type:
+                    "application/json"
+            }
+
+        );
+
+
+    downloadBlob(
+
+        blob,
+
+        filename
+
+    );
+
+}
+
+
+/* =========================================================
+   DOWNLOAD FILE
+   ========================================================= */
+
+function downloadBlob(
+    blob,
+    filename
+){
+
+    const url =
+        URL.createObjectURL(
+            blob
+        );
+
+
+    const link =
+        document.createElement(
+            "a"
+        );
+
+
+    link.href =
+        url;
+
+
+    link.download =
+        filename;
+
+
+    document.body.appendChild(
+        link
+    );
+
+
+    link.click();
+
+
+    link.remove();
+
+
+    setTimeout(
+
+        () =>
+            URL.revokeObjectURL(
+                url
+            ),
+
+        1000
+
+    );
+
+}
+
+
+/* =========================================================
+   BACKUP BUTTON
+   ========================================================= */
+
+$("backupBtn")
+    .addEventListener(
+
+        "click",
+
+        () => {
+
+            const button =
+                $("backupBtn");
+
+
+            button.classList.add(
+                "loading"
+            );
+
+
+            button.textContent =
+                "Creating Backup…";
+
+
+            try{
+
+                /*
+                   Make the timestamp only once,
+                   so Excel and JSON have exactly
+                   the same timestamp.
+                */
+                const createdAt =
+                    now();
+
+
+                const stamp =
+                    timestamp(
+                        createdAt
+                    );
+
+
+                const excelName =
+                    `lesson-payment-backup-${stamp}.xlsx`;
+
+
+                const jsonName =
+                    `lesson-payment-backup-${stamp}.json`;
+
+
+                /*
+                   Human-readable Excel
+                */
+                createExcel(
+
+                    excelName,
+
+                    createdAt
+
+                );
+
+
+                /*
+                   Exact database JSON
+                */
+                createJson(
+
+                    jsonName,
+
+                    createdAt
+
+                );
+
+
+                showMessage(
+
+                    "Backup created successfully. " +
+
+                    "The Excel file is human-readable " +
+
+                    "and the JSON file preserves the " +
+
+                    "exact Firebase structure."
+
+                );
+
+
+            }catch(error){
+
+                console.error(
+                    error
+                );
+
+
+                showMessage(
+
+                    "Backup failed: " +
+
+                    (
+                        error.message ||
+                        error
+                    ),
+
+                    true
+
+                );
+
+
+            }finally{
+
+                button.classList.remove(
+                    "loading"
+                );
+
+
+                button.textContent =
+                    "Create Excel Backup";
+
+            }
+
+        }
+
+    );
+
+
+/* =========================================================
+   REFRESH BUTTON
+   ========================================================= */
+
+$("refreshBtn")
+    .addEventListener(
+
+        "click",
+
+        refresh
+
+    );
+
+</script>
+
+</body>
+</html>
