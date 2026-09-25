@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="description" content="A simple installable MathCloud PWA demo.">
+  <title>MathCloud PWA Demo</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #eff6ff, #f8fafc);
+      color: #0f172a;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .card {
+      width: min(620px, 100%);
+      background: rgba(255,255,255,.96);
+      border-radius: 24px;
+      padding: 34px;
+      box-shadow: 0 20px 60px rgba(15,23,42,.14);
+      text-align: center;
+    }
+    .logo {
+      width: 88px;
+      height: 88px;
+      margin: 0 auto 18px;
+      border-radius: 24px;
+      background: #2563eb;
+      color: white;
+      display: grid;
+      place-items: center;
+      font-size: 32px;
+      font-weight: 800;
+      box-shadow: 0 12px 30px rgba(37,99,235,.28);
+    }
+    h1 { margin: 0 0 10px; font-size: clamp(28px, 6vw, 44px); }
+    p { color: #475569; line-height: 1.65; }
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 15px 24px;
+      background: #2563eb;
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(37,99,235,.25);
+      transition: transform .2s, background .2s;
+    }
+    button:hover { transform: translateY(-2px); background: #1d4ed8; }
+    button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+    #status {
+      margin-top: 18px;
+      min-height: 24px;
+      font-weight: 600;
+    }
+    .note {
+      margin-top: 22px;
+      padding: 14px;
+      border-radius: 12px;
+      background: #f1f5f9;
+      font-size: 14px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="logo">MC</div>
+    <h1>MathCloud PWA</h1>
+    <p>
+      This is a complete Progressive Web App installation demo.
+      When the browser supports PWA installation, click the button below
+      to install it on your device.
+    </p>
+
+    <button id="installBtn" hidden>Install MathCloud App</button>
+    <div id="status">Checking PWA installation support...</div>
+
+    <div class="note">
+      <strong>Important:</strong> PWA installation requires the page to be
+      served through <strong>HTTPS</strong> (or <strong>localhost</strong> during
+      development). Opening <code>index.html</code> directly with
+      <code>file://</code> will not trigger installation.
+    </div>
+  </main>
+
+  <script>
+    let deferredInstallPrompt = null;
+
+    const installBtn = document.getElementById("installBtn");
+    const status = document.getElementById("status");
+
+    // Register the service worker.
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", async () => {
+        try {
+          const registration = await navigator.serviceWorker.register("./sw.js");
+          console.log("Service worker registered:", registration.scope);
+          status.textContent = "PWA is ready. Checking whether installation is available...";
+        } catch (error) {
+          console.error("Service worker registration failed:", error);
+          status.textContent = "Service worker registration failed. Check that sw.js is beside index.html.";
+        }
+      });
+    } else {
+      status.textContent = "This browser does not support service workers.";
+    }
+
+    // Chrome/Edge/other Chromium browsers fire this event when
+    // the application meets the browser's installability conditions.
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+
+      installBtn.hidden = false;
+      status.textContent = "Ready to install. Click the button.";
+    });
+
+    installBtn.addEventListener("click", async () => {
+      if (!deferredInstallPrompt) {
+        status.textContent =
+          "The install prompt is not currently available. The browser may already have the app installed, or its PWA requirements are not satisfied.";
+        return;
+      }
+
+      deferredInstallPrompt.prompt();
+
+      const result = await deferredInstallPrompt.userChoice;
+      console.log("Installation choice:", result.outcome);
+
+      if (result.outcome === "accepted") {
+        status.textContent = "Installation started/accepted.";
+      } else {
+        status.textContent = "Installation was cancelled.";
+      }
+
+      deferredInstallPrompt = null;
+      installBtn.hidden = true;
+    });
+
+    // Hide the button if the app is already installed.
+    window.addEventListener("appinstalled", () => {
+      installBtn.hidden = true;
+      status.textContent = "MathCloud PWA is installed on this device.";
+      deferredInstallPrompt = null;
+    });
+
+    // iOS Safari does not expose beforeinstallprompt.
+    // It can still install PWAs through the Share menu.
+    const isIOS =
+      /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+      !window.MSStream;
+
+    if (isIOS) {
+      setTimeout(() => {
+        if (!deferredInstallPrompt) {
+          status.innerHTML =
+            "On iPhone/iPad: tap <strong>Share</strong> → <strong>Add to Home Screen</strong>.";
+        }
+      }, 1200);
+    }
+  </script>
+</body>
+</html>
