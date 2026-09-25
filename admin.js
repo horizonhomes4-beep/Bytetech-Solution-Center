@@ -463,11 +463,15 @@ function openStudentProfile(id) {
         profileItem("Stop Date", student.stopDate) +
         profileItem("Subscription Status", time.label) +
         profileItem(
-            "Expected Payment (33%)",
-            money(toCommission(student.expectedPayment))
+            "Expected Payment",
+            money(student.expectedPayment)
         ) +
         profileItem(
-            "Amount Paid (33%)",
+            "Amount Paid",
+            money(student.amountPaid)
+        ) +
+        profileItem(
+            "Teacher Commission (⅓ of Paid)",
             money(toCommission(student.amountPaid))
         ) +
         profileItem(
@@ -1467,16 +1471,10 @@ function renderStudents() {
                     student
                 );
 
-            // Teacher commission is exactly 33%.
-            const expectedShare =
-                toCommission(
-                    student.expectedPayment
-                );
-
-            const paidShare =
-                toCommission(
-                    student.amountPaid
-                );
+            // The students table shows the REAL/FULL amounts the
+            // student owes and has paid — never the teacher's ⅓
+            // commission. Commission only appears on the Teachers
+            // table and the dashboard summary cards.
 
             studentTable.innerHTML += `
 <tr>
@@ -1503,11 +1501,11 @@ ${student.stopDate || "-"}
 </td>
 
 <td>
-${money(expectedShare)}
+${money(student.expectedPayment)}
 </td>
 
 <td>
-${money(paidShare)}
+${money(student.amountPaid)}
 </td>
 
 <td>
