@@ -461,320 +461,204 @@
 
 
 <script>
-(function () {
+let deferredPrompt = null;
 
-  "use strict";
+const installButton = document.getElementById("installAppButton");
+const installStatus = document.getElementById("installStatus");
+const iosInstructions = document.getElementById("iosInstallInstructions");
+const browserWarning = document.getElementById("browserWarning");
 
-  /*
-   * ==========================================================
-   * MATHCLOUD PWA INSTALL MANAGER
-   * ==========================================================
-   */
+const isIOS =
+  /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-  let deferredInstallPrompt = null;
-
-  const gate = document.getElementById("appInstallGate");
-  const installButton = document.getElementById("installAppButton");
-  const iosInstructions = document.getElementById("iosInstallInstructions");
-  const installStatus = document.getElementById("installStatus");
-  const browserWarning = document.getElementById("browserWarning");
+const isStandalone =
+  window.matchMedia("(display-mode: standalone)").matches ||
+  window.navigator.standalone === true;
 
 
-  /* ----------------------------------------------------------
-     DEVICE DETECTION
-     ---------------------------------------------------------- */
+/* ==========================================
+   ANDROID / CHROME / EDGE
+   ========================================== */
 
-  const ua = navigator.userAgent || navigator.vendor || "";
+window.addEventListener("beforeinstallprompt", function(e) {
 
-  const isIOS =
-    /iPad|iPhone|iPod/.test(ua) ||
-    (
-      navigator.platform === "MacIntel" &&
-      navigator.maxTouchPoints > 1
-    );
+    console.log("PWA install prompt available");
 
-  const isAndroid = /Android/i.test(ua);
+    e.preventDefault();
 
-  const isStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.matchMedia("(display-mode: fullscreen)").matches ||
-    window.navigator.standalone === true;
+    deferredPrompt = e;
 
+    installButton.style.display = "block";
 
-  /* ----------------------------------------------------------
-     CHECK IF APPLICATION IS ALREADY INSTALLED
-     ---------------------------------------------------------- */
+    installButton.textContent =
+        "📲 Install MathCloud Tutorial";
 
-  function applicationIsInstalled() {
-
-    return (
-      window.matchMedia("(display-mode: standalone)").matches ||
-      window.matchMedia("(display-mode: fullscreen)").matches ||
-      window.navigator.standalone === true
-    );
-
-  }
+});
 
 
-  /* ----------------------------------------------------------
-     SHOW INSTALL GATE
-     ---------------------------------------------------------- */
+/* ==========================================
+   INSTALL BUTTON
+   ========================================== */
 
-  function showInstallGate() {
+installButton.addEventListener("click", async function() {
 
-    if (applicationIsInstalled()) {
-      hideInstallGate();
-      return;
+    /* Already installed */
+    if (isStandalone) {
+        return;
     }
 
-    gate.style.display = "flex";
 
-  }
+    /* iPhone / iPad */
+    if (isIOS) {
 
-
-  /* ----------------------------------------------------------
-     HIDE INSTALL GATE
-     ---------------------------------------------------------- */
-
-  function hideInstallGate() {
-
-    gate.style.display = "none";
-
-  }
-
-
-  /* ----------------------------------------------------------
-     ANDROID / CHROME / EDGE INSTALL PROMPT
-     ---------------------------------------------------------- */
-
-  window.addEventListener(
-    "beforeinstallprompt",
-    function (event) {
-
-      event.preventDefault();
-
-      deferredInstallPrompt = event;
-
-      installButton.style.display = "block";
-
-      browserWarning.style.display = "none";
-
-    }
-  );
-
-
-  /* ----------------------------------------------------------
-     INSTALL BUTTON
-     ---------------------------------------------------------- */
-
-  installButton.addEventListener(
-    "click",
-    async function () {
-
-      if (!deferredInstallPrompt) {
-
-        /*
-         * iPhone/iPad
-         */
-        if (isIOS) {
-
-          iosInstructions.style.display = "block";
-
-          installStatus.style.display = "block";
-
-          installStatus.innerHTML =
-            "Follow the instructions above to add MathCloud Tutorial to your Home Screen.";
-
-          return;
-
-        }
-
-
-        /*
-         * Browser doesn't currently provide install prompt
-         */
-        browserWarning.style.display = "block";
+        iosInstructions.style.display = "block";
 
         installStatus.style.display = "block";
 
         installStatus.innerHTML =
-          "If you are using Chrome or Edge, check the browser's address bar for the Install App icon.";
+            "📱 In Safari, tap the Share button, then select " +
+            "<strong>Add to Home Screen</strong>.";
 
         return;
-
-      }
-
-
-      try {
-
-        deferredInstallPrompt.prompt();
-
-        const result =
-          await deferredInstallPrompt.userChoice;
-
-
-        if (result.outcome === "accepted") {
-
-          installStatus.style.display = "block";
-
-          installStatus.innerHTML =
-            "Installing MathCloud Tutorial...";
-
-        }
-        else {
-
-          installStatus.style.display = "block";
-
-          installStatus.innerHTML =
-            "Installation was cancelled. Please install the app to continue.";
-
-        }
-
-      }
-      catch (error) {
-
-        console.error(
-          "Installation error:",
-          error
-        );
-
-      }
-
-      deferredInstallPrompt = null;
-
     }
-  );
 
 
-  /* ----------------------------------------------------------
-     IOS
-     ---------------------------------------------------------- */
+    /* Native Chrome/Edge install prompt available */
+    if (deferredPrompt) {
 
-  if (isIOS && !isStandalone) {
+        try {
 
-    installButton.textContent =
-      "📲 How to Install on iPhone/iPad";
+            await deferredPrompt.prompt();
 
-    installButton.style.display = "block";
-
-    iosInstructions.style.display = "block";
-
-  }
-
-
-  /* ----------------------------------------------------------
-     APP INSTALLED EVENT
-     ---------------------------------------------------------- */
-
-  window.addEventListener(
-    "appinstalled",
-    function () {
-
-      deferredInstallPrompt = null;
-
-      installStatus.style.display = "block";
-
-      installStatus.innerHTML =
-        "✅ MathCloud Tutorial has been installed. Opening your app...";
-
-      setTimeout(function () {
-
-        hideInstallGate();
-
-      }, 1200);
-
-    }
-  );
-
-
-  /* ----------------------------------------------------------
-     DISPLAY MODE CHANGE
-     ---------------------------------------------------------- */
-
-  const displayModeMedia =
-    window.matchMedia("(display-mode: standalone)");
-
-  displayModeMedia.addEventListener(
-    "change",
-    function (event) {
-
-      if (event.matches) {
-
-        hideInstallGate();
-
-      }
-
-    }
-  );
-
-
-  /* ----------------------------------------------------------
-     SERVICE WORKER
-     ---------------------------------------------------------- */
-
-  if ("serviceWorker" in navigator) {
-
-    window.addEventListener(
-      "load",
-      function () {
-
-        navigator.serviceWorker
-          .register("./sw.js")
-          .then(function (registration) {
+            const result =
+                await deferredPrompt.userChoice;
 
             console.log(
-              "MathCloud service worker registered:",
-              registration.scope
+                "Installation result:",
+                result.outcome
             );
 
-          })
-          .catch(function (error) {
+            if (result.outcome === "accepted") {
+
+                installStatus.style.display = "block";
+
+                installStatus.innerHTML =
+                    "✅ Installing MathCloud Tutorial...";
+
+            } else {
+
+                installStatus.style.display = "block";
+
+                installStatus.innerHTML =
+                    "Installation was cancelled. " +
+                    "You can click Install again.";
+
+            }
+
+        } catch(error) {
 
             console.error(
-              "Service worker registration failed:",
-              error
+                "Install prompt error:",
+                error
             );
 
-          });
-
-      }
-    );
-
-  }
-
-
-  /* ----------------------------------------------------------
-     STARTUP
-     ---------------------------------------------------------- */
-
-  window.addEventListener(
-    "load",
-    function () {
-
-      /*
-       * Give the browser time to determine display mode.
-       */
-
-      setTimeout(function () {
-
-        if (!applicationIsInstalled()) {
-
-          showInstallGate();
-
-        }
-        else {
-
-          hideInstallGate();
-
         }
 
-      }, 500);
+        deferredPrompt = null;
 
+        return;
     }
-  );
 
 
-})();
+    /*
+     * No native prompt.
+     *
+     * Don't falsely tell the user that
+     * installation has failed.
+     */
+
+    installStatus.style.display = "block";
+
+    installStatus.innerHTML = `
+        <strong>Install MathCloud Tutorial</strong><br><br>
+
+        Your browser has not made its automatic
+        installation prompt available yet.
+
+        <br><br>
+
+        <strong>Chrome:</strong><br>
+        Look for the Install icon
+        <strong>⊞</strong> near the right side
+        of the address bar.
+
+        <br><br>
+
+        You can also open Chrome's
+        <strong>⋮ menu → Cast, save and share
+        → Install page as app</strong>.
+    `;
+
+});
+
+
+/* ==========================================
+   APP INSTALLED
+   ========================================== */
+
+window.addEventListener("appinstalled", function() {
+
+    console.log("MathCloud Tutorial installed");
+
+    deferredPrompt = null;
+
+    installStatus.style.display = "block";
+
+    installStatus.innerHTML =
+        "✅ MathCloud Tutorial has been installed.";
+
+    setTimeout(function() {
+
+        document.getElementById(
+            "appInstallGate"
+        ).style.display = "none";
+
+    }, 1000);
+
+});
+
+
+/* ==========================================
+   SERVICE WORKER
+   ========================================== */
+
+if ("serviceWorker" in navigator) {
+
+    window.addEventListener("load", function() {
+
+        navigator.serviceWorker
+            .register("./sw.js")
+            .then(function(registration) {
+
+                console.log(
+                    "Service worker registered:",
+                    registration.scope
+                );
+
+            })
+            .catch(function(error) {
+
+                console.error(
+                    "Service worker registration failed:",
+                    error
+                );
+
+            });
+
+    });
+
+}
 </script>
 </body>
 </html>
