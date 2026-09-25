@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="description" content="MathCloud — student learning app">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="MathCloud">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <title>MathCloud — Install App</title>
+
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:Inter,Arial,sans-serif}
+    body{
+      min-height:100vh;padding:20px;display:grid;place-items:center;
+      background:linear-gradient(135deg,#eff6ff,#f8fafc);color:#0f172a
+    }
+    .card{
+      width:min(680px,100%);background:#fff;border-radius:28px;padding:30px;
+      box-shadow:0 20px 70px rgba(15,23,42,.14);text-align:center
+    }
+    .logo{
+      width:86px;height:86px;margin:0 auto 16px;border-radius:24px;
+      overflow:hidden;box-shadow:0 10px 28px rgba(37,99,235,.25)
+    }
+    .logo img{width:100%;height:100%;object-fit:cover}
+    h1{margin:0 0 10px;font-size:clamp(28px,7vw,44px)}
+    p{color:#475569;line-height:1.65}
+    .install{
+      width:100%;max-width:430px;margin:20px auto 10px;display:flex;
+      justify-content:center;align-items:center;gap:10px;border:0;border-radius:16px;
+      padding:16px 22px;background:#2563eb;color:#fff;font-size:17px;
+      font-weight:800;cursor:pointer;box-shadow:0 12px 28px rgba(37,99,235,.25)
+    }
+    .install:active{transform:scale(.98)}
+    .status{min-height:28px;margin-top:14px;font-weight:700;color:#334155}
+    .guide{
+      display:none;text-align:left;margin-top:20px;padding:18px;border-radius:18px;
+      background:#f8fafc;border:1px solid #e2e8f0
+    }
+    .guide.show{display:block}
+    .guide h2{font-size:19px;margin:0 0 10px}
+    .guide ol{margin:8px 0 0;padding-left:24px}
+    .guide li{margin:10px 0;line-height:1.5}
+    .tip{margin-top:16px;padding:13px;border-radius:12px;background:#eff6ff;color:#1e40af;font-size:14px}
+    .small{font-size:13px;color:#64748b;margin-top:18px}
+    .close{float:right;border:0;background:transparent;font-size:22px;cursor:pointer}
+  </style>
+</head>
+
+<body>
+<main class="card">
+  <div class="logo"><img src="icon-192.png" alt="MathCloud"></div>
+  <h1>MathCloud</h1>
+  <p>Install MathCloud on your phone or tablet for quick access to your lessons, quizzes and learning tools.</p>
+
+  <button class="install" id="installBtn" type="button">📲 Install MathCloud</button>
+  <div class="status" id="status">Preparing your installation options…</div>
+
+  <section class="guide" id="guide">
+    <button class="close" id="closeGuide" aria-label="Close">×</button>
+    <h2 id="guideTitle">Install MathCloud</h2>
+    <div id="guideBody"></div>
+  </section>
+
+  <div class="tip">
+    <strong>Student tip:</strong> After installation, MathCloud opens like an app from your Home Screen.
+  </div>
+  <div class="small">For installation, open this page in your device's normal browser using HTTPS.</div>
+</main>
+
+<script>
+(() => {
+  let deferredPrompt = null;
+
+  const btn = document.getElementById("installBtn");
+  const status = document.getElementById("status");
+  const guide = document.getElementById("guide");
+  const title = document.getElementById("guideTitle");
+  const body = document.getElementById("guideBody");
+  const close = document.getElementById("closeGuide");
+
+  const ua = navigator.userAgent.toLowerCase();
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+  const isAndroid = /android/.test(ua);
+  const isSamsung = /samsungbrowser/.test(ua);
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+
+  function showGuide(t, html) {
+    title.textContent = t;
+    body.innerHTML = html;
+    guide.classList.add("show");
+    guide.scrollIntoView({behavior:"smooth", block:"nearest"});
+  }
+
+  function androidGuide() {
+    showGuide("Install on Android", `
+      <ol>
+        <li>Tap <strong>Install MathCloud</strong>. If the browser offers <strong>Install app</strong> or <strong>Add to Home screen</strong>, choose it.</li>
+        <li>If no prompt appears, tap the browser's <strong>⋮ menu</strong> and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+        <li>Confirm by tapping <strong>Install</strong> or <strong>Add</strong>.</li>
+      </ol>
+      <p class="tip">Chrome, Edge and Samsung Internet may use slightly different menu wording.</p>
+    `);
+  }
+
+  function iosGuide() {
+    showGuide("Install on iPhone / iPad", `
+      <ol>
+        <li>Open this page in <strong>Safari</strong>. iPhone/iPad installation is controlled by Safari.</li>
+        <li>Tap the <strong>Share</strong> button (□↑).</li>
+        <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+        <li>Tap <strong>Add</strong>.</li>
+      </ol>
+      <p class="tip">If you are viewing MathCloud inside another app's browser, choose <strong>Open in Safari</strong> first.</p>
+    `);
+  }
+
+  function desktopGuide() {
+    showGuide("Install MathCloud", `
+      <ol>
+        <li>Use Chrome or Edge.</li>
+        <li>Look for the <strong>Install</strong> icon in the address bar, or open the browser menu.</li>
+        <li>Choose <strong>Install MathCloud</strong>.</li>
+      </ol>
+    `);
+  }
+
+  // Keep the install button visible on phones/tablets even when
+  // beforeinstallprompt is unavailable. The button then opens
+  // platform-specific instructions instead of appearing to be broken.
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredPrompt = event;
+    btn.textContent = "📲 Install MathCloud";
+    status.textContent = "MathCloud is ready to install.";
+  });
+
+  btn.addEventListener("click", async () => {
+    if (isStandalone) {
+      status.textContent = "MathCloud is already installed on this device.";
+      return;
+    }
+
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const result = await deferredPrompt.userChoice;
+        status.textContent = result.outcome === "accepted"
+          ? "MathCloud installation started."
+          : "Installation was cancelled. You can try again anytime.";
+      } catch (err) {
+        status.textContent = "Use the browser menu to install MathCloud.";
+      }
+      deferredPrompt = null;
+      return;
+    }
+
+    if (isIOS) {
+      iosGuide();
+    } else if (isAndroid) {
+      androidGuide();
+    } else {
+      desktopGuide();
+    }
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredPrompt = null;
+    guide.classList.remove("show");
+    btn.textContent = "✓ MathCloud Installed";
+    btn.disabled = true;
+    status.textContent = "MathCloud is installed and ready to use.";
+  });
+
+  close.addEventListener("click", () => guide.classList.remove("show"));
+
+  if (isStandalone) {
+    btn.textContent = "✓ MathCloud Installed";
+    btn.disabled = true;
+    status.textContent = "MathCloud is already installed on this device.";
+  } else if (isIOS) {
+    status.textContent = "Ready for iPhone/iPad. Tap Install for Safari instructions.";
+  } else if (isAndroid) {
+    status.textContent = "Ready for Android. Tap Install to add MathCloud to your Home Screen.";
+  } else {
+    status.textContent = "Tap Install to see the installation options.";
+  }
+
+  // Service worker registration
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js")
+        .then(reg => {
+          console.log("MathCloud service worker:", reg.scope);
+        })
+        .catch(err => console.error("Service worker registration failed:", err));
+    });
+  }
+})();
+</script>
+</body>
+</html>
